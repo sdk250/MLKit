@@ -1,19 +1,19 @@
 # 介绍
-这是一个整合了 `thread_socket` 和 `v2ray` 的全局代理脚本。
+这是一个整合了 `[thread_socket](https://github.com/sdk250/thread_socket)` 和 `v2ray` 的全局代理脚本。
 # 功能
 目前拥有两种模式
 ## `t` 模式
-    出口为 `thread_socket` ，仅有中国的IP
+出口为 `thread_socket` ，仅有中国的IP
 ## `v` 模式
-    出口为 `v2ray` 与 `thread_socket` ，拥有中国的IP地址与v2ray(自配置)的IP
+出口为 `v2ray` 与 `thread_socket` ，拥有中国的IP地址与v2ray(自配置)的IP
 # 使用方法 & 配置修改
 ```shell
 mlk.sh <mode>
 ```
 `mode` 为 `t` 或 `v`
 ## 配置修改
-    - 对于 `_v2.json` ，有
-    ```json
+- 对于 `_v2.json` ，有
+```json
 {
     "tag": "global-out0",
     "protocol": "vmess",
@@ -36,8 +36,8 @@ mlk.sh <mode>
     }
 }
 ```
-    修改 `address` , `port` , `uuid` 为自己的特定配置项
-    剩余的 `cn-out*` 以此类推
-    路由配置项参考[官方文档](https://www.v2fly.org/v5/config/router.html)
-    - 对于 `mlk.sh` ，有
-    我大部分写有注释
+修改 `address` , `port` , `uuid` 为自己的特定配置项
+剩余的 `cn-out*` 以此类推
+路由配置项参考[官方文档](https://www.v2fly.org/v5/config/router.html)
+- 对于 `mlk.sh` ，有
+我大部分写有注释。
