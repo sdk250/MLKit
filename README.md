@@ -1,18 +1,20 @@
 # 介绍
-这是一个整合了 [`thread_socket`](https://github.com/sdk250/socket) 和 [`v2ray`](https://github.com/v2fly/v2ray-core) 的全局代理脚本。
+这是一个整合了 [`thread_socket`](https://github.com/sdk250/socket) 和 [`v2ray`](https://github.com/v2fly/v2ray-core) 的全局代理脚本。<br>
+出于方便我给出了编译好的二进制程序，你也可以通过上面给出的仓库自己编译。<br>
+从全局代理的角度出发，它很轻量，对于 `t模式` 仅使用了一个 `thread_socket` 来实现效果; 即使是具有分流功能的 `v模式` 也仅使用了 `v2ray` 来实现tun网卡转发流量。
 # 功能
 目前拥有两种模式
 ## `t` 模式
 出口为 `thread_socket` ，仅有中国的IP
 ## `v` 模式
-出口为 `v2ray` 与 `thread_socket` ，拥有中国的IP地址与v2ray(自配置)的IP
+出口为 `v2ray` 与 `thread_socket` ，拥有中国的IP地址与v2ray(自配置)的IP。
 # 使用方法 & 配置修改
 ```shell
 mlk.sh <mode>
 ```
-`mode` 为 `t` 或 `v`
+`mode` 为 `t` 或 `v`。
 ## 配置修改
-- 对于 `_v2.json` ，有
+- 对于 `_v2.json` ，有<br>
 ```json
 {
     "tag": "global-out0",
@@ -36,8 +38,8 @@ mlk.sh <mode>
     }
 }
 ```
-修改 `address` , `port` , `uuid` 为自己的特定配置项
-剩余的 `cn-out*` 以此类推
-路由配置项参考[官方文档](https://www.v2fly.org/v5/config/router.html)
-- 对于 `mlk.sh` ，有
+修改 `address` , `port` , `uuid` 为自己的特定配置项。<br>
+剩余的 `cn-out*` 以此类推。<br>
+路由配置项参考[官方文档](https://www.v2fly.org/v5/config/router.html)。<br>
+- 对于 `mlk.sh` ，有<br>
 我大部分写有注释。
