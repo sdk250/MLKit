@@ -6,9 +6,11 @@ PREF=100
 # thread_socket 连接的IP(百度系)
 SERVER_ADDR="110.242.70.69"
 # Allow IP
-ALLOW_IP="127.0.0.1/32 \
+ALLOW_IP="127.0.0.0/8 \
 	10.0.0.0/8 \
 	172.16.0.0/12 \
+	169.254.0.0/16 \
+	224.0.0.0/4 \
 	${SERVER_ADDR}/32 \
 	192.168/16"
 # The package name of application you need allow
