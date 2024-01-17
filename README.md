@@ -1,5 +1,5 @@
 # 介绍
-这是一个整合了 `[thread_socket](https://github.com/sdk250/thread_socket)` 和 `v2ray` 的全局代理脚本。
+这是一个整合了 [`thread_socket`](https://github.com/sdk250/thread_socket) 和 `v2ray` 的全局代理脚本。
 # 功能
 目前拥有两种模式
 ## `t` 模式
