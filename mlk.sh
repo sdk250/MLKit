@@ -4,23 +4,25 @@
 home_path="${0%/*}/Tools"
 PREF=100
 # thread_socket 连接的IP(百度系)
-SERVER_ADDR="110.242.70.69"
+SERVER_ADDR="157.0.148.53"
 # Allow IP
 ALLOW_IP="127.0.0.0/8 \
 	10.0.0.0/8 \
 	172.16.0.0/12 \
 	169.254.0.0/16 \
 	224.0.0.0/4 \
-	${SERVER_ADDR}/32 \
-	192.168/16"
+	192.168/16 \
+	${SERVER_ADDR}/32"
 # The package name of application you need allow
 ALLOW_PACKAGES="com.android.bankabc \
 	com.taobao.taobao \
+	com.v2ray.ang \
 	com.nasoft.socmark"
 # 同上，不过是针对放行UDP
 ALLOW_UDP_PACKAGES="com.tencent.tmgp.sgame \
 	com.miHoYo.Yuanshen \
 	com.tencent.mobileqq \
+	com.netease.cloudmusic \
 	com.ztgame.bob.mi \
 	com.tencent.mm"
 PACKAGES="/data/system/packages.list"
@@ -54,6 +56,15 @@ v2ray_open() {
 		-p udp \
 		--dport 67:68 \
 		-j ACCEPT
+	iptables -t mangle -I PREROUTING 1 \
+		-w 5 \
+		-i tun+ \
+		-j ACCEPT
+	iptables -t mangle -I OUTPUT 1 \
+		-w 5 \
+		-m owner \
+		--uid ${ALLOW_UID} \
+		-j ACCEPT
 	# Allow DNS query service
 	# iptables -t mangle -I OUTPUT 1 \
 		# -w 5 \
@@ -71,15 +82,6 @@ v2ray_open() {
 			-d ${IP} \
 			-j ACCEPT
 	done
-	iptables -t mangle -I PREROUTING 1 \
-		-w 5 \
-		-i tun+ \
-		-j ACCEPT
-	iptables -t mangle -I OUTPUT 1 \
-		-w 5 \
-		-m owner \
-		--uid ${ALLOW_UID} \
-		-j ACCEPT
 	for LOOKUP in ${ALLOW_LOOKUP}
 	do
 		# Allow lookup
@@ -101,11 +103,6 @@ v2ray_open() {
 				-j ACCEPT
 		fi
 	done
-	iptables -t mangle -A OUTPUT \
-		-w 5 \
-		-m owner \
-		--uid 0 \
-		-j ACCEPT
 	for PACKAGE in ${ALLOW_UDP_PACKAGES}
 	do
 		uid=$(awk "/${PACKAGE}/{print \$2}" ${PACKAGES})
@@ -135,15 +132,19 @@ v2ray_open() {
 		-j MARK \
 		--set-xmark ${MARK}
 
-	${home_path}/thread_socket -p ${TCP_PORT} -u ${ALLOW_UID} -r ${SERVER_ADDR} -d &> ${home_path}/sock.log
+	${home_path}/thread_socket \
+		-p ${TCP_PORT} \
+		-u ${ALLOW_UID} \
+		-r ${SERVER_ADDR} \
+		-d &> ${home_path}/sock.log
 	nohup \
 		${home_path}/v2ray run \
 		-config ${home_path}/_v2.json \
 		-format jsonv5 \
 		&> ${home_path}/v2.log &
 	sleep 2
+	ip link set up dev ${TUNDEV} qlen 1000
 	ip address add ${TUN_ADDR} dev ${TUNDEV}
-	ip link set up dev ${TUNDEV} qlen 1500
 	ip rule add fwmark ${MARK} lookup ${TABLE} pref ${PREF}
 	ip route add default via ${TUN_ADDR%/*} dev ${TUNDEV} table ${TABLE}
 	ip -6 rule add unreachable pref ${PREF} # Deny IPV6
@@ -170,6 +171,15 @@ v2ray_close() {
 		-p udp \
 		--dport 67:68 \
 		-j ACCEPT
+	iptables -t mangle -D PREROUTING \
+		-w 5 \
+		-i tun+ \
+		-j ACCEPT
+	iptables -t mangle -D OUTPUT \
+		-w 5 \
+		-m owner \
+		--uid ${ALLOW_UID} \
+		-j ACCEPT
 	# Allow DNS query service
 	# iptables -t mangle -D OUTPUT \
 		# -w 5 \
@@ -187,15 +197,6 @@ v2ray_close() {
 			-d ${IP} \
 			-j ACCEPT
 	done
-	iptables -t mangle -D PREROUTING \
-		-w 5 \
-		-i tun+ \
-		-j ACCEPT
-	iptables -t mangle -D OUTPUT \
-		-w 5 \
-		-m owner \
-		--uid ${ALLOW_UID} \
-		-j ACCEPT
 	for LOOKUP in ${ALLOW_LOOKUP}
 	do
 		# Allow lookup
@@ -217,11 +218,6 @@ v2ray_close() {
 				-j ACCEPT
 		fi
 	done
-	iptables -t mangle -D OUTPUT \
-		-w 5 \
-		-m owner \
-		--uid 0 \
-		-j ACCEPT
 	for PACKAGE in ${ALLOW_UDP_PACKAGES}
 	do
 		uid=$(awk "/${PACKAGE}/{print \$2}" ${PACKAGES})
@@ -268,7 +264,11 @@ tiny_open() {
 	[ -f "/dev/net/tun" ] || mkdir -p /dev/net \
 		&& ln -sf /dev/tun /dev/net/tun
 
-	${home_path}/thread_socket -p ${TCP_PORT} -u ${ALLOW_UID} -r ${SERVER_ADDR} -d &> ${home_path}/sock.log
+	${home_path}/thread_socket \
+		-p ${TCP_PORT} \
+		-u ${ALLOW_UID} \
+		-r ${SERVER_ADDR} \
+		-d &> ${home_path}/sock.log
 
 	for PACKAGE in ${ALLOW_PACKAGES}
 	do
