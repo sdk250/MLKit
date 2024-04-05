@@ -4,7 +4,7 @@
 home_path="${0%/*}/Tools"
 PREF=100
 # thread_socket 连接的IP(百度系)
-SERVER_ADDR="157.0.148.53"
+SERVER_ADDR="153.3.237.117"
 # Allow IP
 ALLOW_IP="127.0.0.0/8 \
 	10.0.0.0/8 \
@@ -15,8 +15,8 @@ ALLOW_IP="127.0.0.0/8 \
 	${SERVER_ADDR}/32"
 # The package name of application you need allow
 ALLOW_PACKAGES="com.android.bankabc \
-	com.taobao.taobao \
 	com.v2ray.ang \
+	com.tmri.app.main \
 	com.nasoft.socmark"
 # 同上，不过是针对放行UDP
 ALLOW_UDP_PACKAGES="com.tencent.tmgp.sgame \
@@ -24,9 +24,10 @@ ALLOW_UDP_PACKAGES="com.tencent.tmgp.sgame \
 	com.tencent.mobileqq \
 	com.netease.cloudmusic \
 	com.ztgame.bob.mi \
+	com.tencent.tmgp.pubgmhd \
 	com.tencent.mm"
 PACKAGES="/data/system/packages.list"
-ALLOW_LOOKUP="wlan+ tun+ lo" # 需要放行的网卡，添加 wlan+ 进入可以放行Wifi
+ALLOW_LOOKUP="tun+ lo" # 需要放行的网卡，添加 wlan+ 进入可以放行Wifi
 ALLOW_UID="0" # Be care for using
 ALLOW_PORT=20822
 TCP_PORT=20802
@@ -39,6 +40,27 @@ v2ray_open() {
 	echo 1 > /proc/sys/net/ipv4/ip_forward
 	echo 1 > /proc/sys/net/ipv4/ip_dynaddr
 
+	echo -e "# This file is automatical" \
+	"genrated by \`mlk\`\n# DO NOT edit it\n" > ${home_path}/.uid
+
+	echo -n "uid=" >> ${home_path}/.uid
+	for PACKAGE in ${ALLOW_PACKAGES}
+	do
+		uid=$(awk "/${PACKAGE}/{print \$2}" ${PACKAGES})
+		if [ ! -z ${uid} ]
+		then
+			echo -n "${uid} " >> ${home_path}/.uid
+		fi
+	done
+	echo -e -n "\nudp_uid=" >> ${home_path}/.uid
+	for PACKAGE in ${ALLOW_UDP_PACKAGES}
+	do
+		uid=$(awk "/${PACKAGE}/{print \$2}" ${PACKAGES})
+		if [ ! -z ${uid} ]
+		then
+			echo -n "${uid} " >> ${home_path}/.uid
+		fi
+	done
 	[ -f "/dev/net/tun" ] || mkdir -p /dev/net \
 		&& ln -sf /dev/tun /dev/net/tun
 
@@ -91,30 +113,26 @@ v2ray_open() {
 			-j ACCEPT
 	done
 
-	for PACKAGE in ${ALLOW_PACKAGES}
+	for UID in $(grep -E '^[^#]' ${home_path}/.uid | \
+		grep -E -o '^uid=.+' | grep -E -o '[0-9]+ ?'
+	)
 	do
-		uid=$(awk "/${PACKAGE}/{print \$2}" ${PACKAGES})
-		if [ ! -z ${uid} ]
-		then
-			iptables -t mangle -A OUTPUT \
-				-w 5 \
-				-m owner \
-				--uid ${uid} \
-				-j ACCEPT
-		fi
+		iptables -t mangle -A OUTPUT \
+			-w 5 \
+			-m owner \
+			--uid ${UID} \
+			-j ACCEPT
 	done
-	for PACKAGE in ${ALLOW_UDP_PACKAGES}
+	for UID in $(grep -E '^[^#]' ${home_path}/.uid | \
+		grep -E -o '^udp_uid=.+' | grep -E -o '[0-9]+ ?'
+	)
 	do
-		uid=$(awk "/${PACKAGE}/{print \$2}" ${PACKAGES})
-		if [ ! -z ${uid} ]
-		then
-			iptables -t mangle -A OUTPUT \
-				-w 5 \
-				-p udp \
-				-m owner \
-				--uid ${uid} \
-				-j ACCEPT
-		fi
+		iptables -t mangle -A OUTPUT \
+			-w 5 \
+			-p udp \
+			-m owner \
+			--uid ${UID} \
+			-j ACCEPT
 	done
 
 	# iptables -t mangle -A OUTPUT -w 5 \
@@ -206,30 +224,26 @@ v2ray_close() {
 			-j ACCEPT
 	done
 
-	for PACKAGE in ${ALLOW_PACKAGES}
+	for UID in $(grep -E '^[^#]' ${home_path}/.uid | \
+		grep -E -o '^uid=.+' | grep -E -o '[0-9]+ ?'
+	)
 	do
-		uid=$(awk "/${PACKAGE}/{print \$2}" ${PACKAGES})
-		if [ ! -z ${uid} ]
-		then
-			iptables -t mangle -D OUTPUT \
-				-w 5 \
-				-m owner \
-				--uid ${uid} \
-				-j ACCEPT
-		fi
+		iptables -t mangle -D OUTPUT \
+			-w 5 \
+			-m owner \
+			--uid ${UID} \
+			-j ACCEPT
 	done
-	for PACKAGE in ${ALLOW_UDP_PACKAGES}
+	for UID in $(grep -E '^[^#]' ${home_path}/.uid | \
+		grep -E -o '^udp_uid=.+' | grep -E -o '[0-9]+ ?'
+	)
 	do
-		uid=$(awk "/${PACKAGE}/{print \$2}" ${PACKAGES})
-		if [ ! -z ${uid} ]
-		then
-			iptables -t mangle -A OUTPUT \
-				-w 5 \
-				-p udp \
-				-m owner \
-				--uid ${uid} \
-				-j ACCEPT
-		fi
+		iptables -t mangle -D OUTPUT \
+			-w 5 \
+			-p udp \
+			-m owner \
+			--uid ${UID} \
+			-j ACCEPT
 	done
 
 	# iptables -t mangle -D OUTPUT -w 5 \
@@ -255,11 +269,34 @@ v2ray_close() {
 	killall -9 v2ray \
 		thread_socket
 
+	rm -f ${home_path}/.uid
 	mv ${0%/*}/enabled ${0%/*}/disabled
 }
 tiny_open() {
 	echo 1 > /proc/sys/net/ipv4/ip_forward
 	echo 1 > /proc/sys/net/ipv4/ip_dynaddr
+
+	echo -e "# This file is automatical" \
+	"genrated by \`mlk\`\n# DO NOT edit it\n" > ${home_path}/.uid
+
+	echo -n "uid=" >> ${home_path}/.uid
+	for PACKAGE in ${ALLOW_PACKAGES}
+	do
+		uid=$(awk "/${PACKAGE}/{print \$2}" ${PACKAGES})
+		if [ ! -z ${uid} ]
+		then
+			echo -n "${uid} " >> ${home_path}/.uid
+		fi
+	done
+	echo -e -n "\nudp_uid=" >> ${home_path}/.uid
+	for PACKAGE in ${ALLOW_UDP_PACKAGES}
+	do
+		uid=$(awk "/${PACKAGE}/{print \$2}" ${PACKAGES})
+		if [ ! -z ${uid} ]
+		then
+			echo -n "${uid} " >> ${home_path}/.uid
+		fi
+	done
 
 	[ -f "/dev/net/tun" ] || mkdir -p /dev/net \
 		&& ln -sf /dev/tun /dev/net/tun
@@ -270,27 +307,23 @@ tiny_open() {
 		-r ${SERVER_ADDR} \
 		-d &> ${home_path}/sock.log
 
-	for PACKAGE in ${ALLOW_PACKAGES}
+	for UID in $(grep -E '^[^#]' ${home_path}/.uid | \
+		grep -E -o '^uid=.+' | grep -E -o '[0-9]+ ?'
+	)
 	do
-		uid=$(awk "/${PACKAGE}/{print \$2}" ${PACKAGES})
-		if [ ! -z ${uid} ]
-		then
-			iptables -t nat -A OUTPUT -w 5 -m owner \
-				--uid ${uid} -j ACCEPT
-			iptables -t mangle -A OUTPUT -w 5 -m owner \
-				--uid ${uid} -j ACCEPT
-		fi
+		iptables -t nat -A OUTPUT -w 5 -m owner \
+			--uid ${UID} -j ACCEPT
+		iptables -t mangle -A OUTPUT -w 5 -m owner \
+			--uid ${UID} -j ACCEPT
 	done
-	for PACKAGE in ${ALLOW_UDP_PACKAGES}
+	for UID in $(grep -E '^[^#]' ${home_path}/.uid | \
+		grep -E -o '^udp_uid=.+' | grep -E -o '[0-9]+ ?'
+	)
 	do
-		uid=$(awk "/${PACKAGE}/{print \$2}" ${PACKAGES})
-		if [ ! -z ${uid} ]
-		then
-			iptables -t nat -A OUTPUT -w 5 -m owner \
-				--uid ${uid} -p udp -j ACCEPT
-			iptables -t mangle -A OUTPUT -w 5 -m owner \
-				--uid ${uid} -p udp -j ACCEPT
-		fi
+		iptables -t nat -A OUTPUT -w 5 -m owner \
+			--uid ${UID} -p udp -j ACCEPT
+		iptables -t mangle -A OUTPUT -w 5 -m owner \
+			--uid ${UID} -p udp -j ACCEPT
 	done
 	iptables -t nat -A OUTPUT -w 5 -p udp \
 		--dport 67:68 -j ACCEPT
@@ -349,27 +382,23 @@ tiny_close() {
 
 	killall -9 thread_socket
 
-	for PACKAGE in ${ALLOW_PACKAGES}
+	for UID in $(grep -E '^[^#]' ${home_path}/.uid | \
+		grep -E -o '^uid=.+' | grep -E -o '[0-9]+ ?'
+	)
 	do
-		uid=$(awk "/${PACKAGE}/{print \$2}" ${PACKAGES})
-		if [ ! -z ${uid} ]
-		then
-			iptables -t nat -D OUTPUT -w 5 -m owner \
-				--uid ${uid} -j ACCEPT
-			iptables -t mangle -D OUTPUT -w 5 -m owner \
-				--uid ${uid} -j ACCEPT
-		fi
+		iptables -t nat -D OUTPUT -w 5 -m owner \
+			--uid ${UID} -j ACCEPT
+		iptables -t mangle -D OUTPUT -w 5 -m owner \
+			--uid ${UID} -j ACCEPT
 	done
-	for PACKAGE in ${ALLOW_UDP_PACKAGES}
+	for UID in $(grep -E '^[^#]' ${home_path}/.uid | \
+		grep -E -o '^udp_uid=.+' | grep -E -o '[0-9]+ ?'
+	)
 	do
-		uid=$(awk "/${PACKAGE}/{print \$2}" ${PACKAGES})
-		if [ ! -z ${uid} ]
-		then
-			iptables -t nat -D OUTPUT -w 5 -m owner \
-				--uid ${uid} -p udp -j ACCEPT
-			iptables -t mangle -D OUTPUT -w 5 -m owner \
-				--uid ${uid} -p udp -j ACCEPT
-		fi
+		iptables -t nat -D OUTPUT -w 5 -m owner \
+			--uid ${UID} -p udp -j ACCEPT
+		iptables -t mangle -D OUTPUT -w 5 -m owner \
+			--uid ${UID} -p udp -j ACCEPT
 	done
 	iptables -t nat -D OUTPUT -w 5 -p udp \
 		--dport 67:68 -j ACCEPT
@@ -418,6 +447,7 @@ tiny_close() {
 	iptables -t mangle -D FORWARD -w 5 -p udp --dport 53 -j ACCEPT
 	# End proxy forward
 
+	rm -f ${home_path}/.uid
 	mv ${0%/*}/enabled ${0%/*}/disabled
 }
 
