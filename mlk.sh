@@ -1,4 +1,3 @@
-#!/bin/bash
 # Powered by sdk250
 
 home_path="${0%/*}/Tools"
