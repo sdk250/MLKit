@@ -204,8 +204,7 @@
 				"prefix": 0
 			}],
 			"enablePromiscuousMode": true,
-			"enableSpoofing": true,
-			"packetEncoding": "Packet"
+			"enableSpoofing": true
 		}
 	}
 }

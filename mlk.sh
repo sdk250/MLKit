@@ -1,10 +1,12 @@
-#!/system/bin/sh
+#!/bin/bash
 # Powered by sdk250
 
 home_path="${0%/*}/Tools"
 PREF=100
+
 # thread_socket 连接的IP(百度系)
-SERVER_ADDR="153.3.237.117"
+SERVER_ADDR="110.242.70.69"
+
 # Allow IP
 ALLOW_IP="127.0.0.0/8 \
 	10.0.0.0/8 \
@@ -13,22 +15,22 @@ ALLOW_IP="127.0.0.0/8 \
 	224.0.0.0/4 \
 	192.168/16 \
 	${SERVER_ADDR}/32"
-# The package name of application you need allow
-ALLOW_PACKAGES="com.android.bankabc \
-	com.v2ray.ang \
-	com.tmri.app.main \
-	com.nasoft.socmark"
-# 同上，不过是针对放行UDP
-ALLOW_UDP_PACKAGES="com.tencent.tmgp.sgame \
-	com.miHoYo.Yuanshen \
-	com.tencent.mobileqq \
-	com.netease.cloudmusic \
-	com.ztgame.bob.mi \
-	com.tencent.tmgp.pubgmhd \
-	com.tencent.mm"
+
+# Only for Android operation system
 PACKAGES="/data/system/packages.list"
-ALLOW_LOOKUP="tun+ lo" # 需要放行的网卡，添加 wlan+ 进入可以放行Wifi
-ALLOW_UID="0" # Be care for using
+
+# The package name of application you need allow
+ALLOW_PACKAGES=""
+
+# 同上，不过是针对放行UDP
+ALLOW_UDP_PACKAGES=""
+
+# 需要放行的网卡，添加 wlan+ 进入可以放行Wifi
+ALLOW_LOOKUP="tun+ lo"
+
+# Be care for using
+ALLOW_UID="0"
+
 ALLOW_PORT=20822
 TCP_PORT=20802
 MARK=10086
@@ -61,8 +63,15 @@ v2ray_open() {
 			echo -n "${uid} " >> ${home_path}/.uid
 		fi
 	done
-	[ -f "/dev/net/tun" ] || mkdir -p /dev/net \
-		&& ln -sf /dev/tun /dev/net/tun
+
+	if [ -c /dev/tun ]
+	then
+		[ -f /dev/net/tun ] || ( mkdir -p /dev/net \
+			&& ln -sf /dev/tun /dev/net/tun )
+	else
+		[ -c /dev/net/tun ] || ( mkdir -p /dev/net \
+			&& mknod /dev/net/tun c 10 200 )
+	fi
 
 	iptables -t filter -I FORWARD 1 \
 		-w 5 \
@@ -168,9 +177,10 @@ v2ray_open() {
 	ip -6 rule add unreachable pref ${PREF} # Deny IPV6
 
 	mv ${0%/*}/disabled ${0%/*}/enabled && echo "v2ray" > ${0%/*}/enabled
-	echo "\x1b[92;mV2ray Done.\x1b[0m"
+	echo -e "\x1b[92mV2ray Done.\x1b[0m"
 	exit 0
 }
+
 v2ray_close() {
 	echo 0 > /proc/sys/net/ipv4/ip_forward
 	echo 0 > /proc/sys/net/ipv4/ip_dynaddr
@@ -272,6 +282,7 @@ v2ray_close() {
 	rm -f ${home_path}/.uid
 	mv ${0%/*}/enabled ${0%/*}/disabled
 }
+
 tiny_open() {
 	echo 1 > /proc/sys/net/ipv4/ip_forward
 	echo 1 > /proc/sys/net/ipv4/ip_dynaddr
@@ -298,8 +309,14 @@ tiny_open() {
 		fi
 	done
 
-	[ -f "/dev/net/tun" ] || mkdir -p /dev/net \
-		&& ln -sf /dev/tun /dev/net/tun
+	if [ -c /dev/tun ]
+	then
+		[ -f /dev/net/tun ] || ( mkdir -p /dev/net \
+			&& ln -sf /dev/tun /dev/net/tun )
+	else
+		[ -c /dev/net/tun ] || ( mkdir -p /dev/net \
+			&& mknod /dev/net/tun c 10 200 )
+	fi
 
 	${home_path}/thread_socket \
 		-p ${TCP_PORT} \
@@ -373,9 +390,10 @@ tiny_open() {
 	# End proxy forward
 
 	mv ${0%/*}/disabled ${0%/*}/enabled && echo "thread_socket" > ${0%/*}/enabled
-	echo "\x1b[92;mTiny Done.\x1b[0m"
+	echo -e "\x1b[92mTiny Done.\x1b[0m"
 	exit 0
 }
+
 tiny_close() {
 	echo 0 > /proc/sys/net/ipv4/ip_forward
 	echo 0 > /proc/sys/net/ipv4/ip_dynaddr
@@ -471,7 +489,7 @@ then
 	fi
 elif [ -f ${0%/*}/enabled ]
 then
-	if [ ${#} -ne 0 ]
+	if [ ${#} -eq 1 ]
 	then
 		status=$(cat ${0%/*}/enabled)
 		if [ ${1} == "t" ]
