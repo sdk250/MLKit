@@ -69,7 +69,8 @@ v2ray_open() {
 			&& ln -sf /dev/tun /dev/net/tun )
 	else
 		[ -c /dev/net/tun ] || ( mkdir -p /dev/net \
-			&& mknod /dev/net/tun c 10 200 )
+			&& mknod /dev/net/tun c 10 200 \
+			&& chmod 600 /dev/net/tun )
 	fi
 
 	iptables -t filter -I FORWARD 1 \
@@ -314,7 +315,8 @@ tiny_open() {
 			&& ln -sf /dev/tun /dev/net/tun )
 	else
 		[ -c /dev/net/tun ] || ( mkdir -p /dev/net \
-			&& mknod /dev/net/tun c 10 200 )
+			&& mknod /dev/net/tun c 10 200 \
+			&& chmod 600 /dev/net/tun )
 	fi
 
 	${home_path}/thread_socket \
