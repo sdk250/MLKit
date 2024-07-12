@@ -1,7 +1,6 @@
 # Powered by sdk250
 
 home_path="${0%/*}/Tools"
-PREF=100
 
 # thread_socket 连接的IP(百度系)
 SERVER_ADDR="110.242.70.69"
@@ -19,23 +18,29 @@ ALLOW_IP="127.0.0.0/8 \
 PACKAGES="/data/system/packages.list"
 
 # The package name of application you need allow
-ALLOW_PACKAGES=""
+ALLOW_PACKAGES="com.android.bankabc \
+	com.nasoft.socmark \
+	com.v2ray.ang \
+	com.tmri.app.main"
 
 # 同上，不过是针对放行UDP
-ALLOW_UDP_PACKAGES=""
+ALLOW_UDP_PACKAGES="com.tencent.tmgp.pubgmhd \
+	com.tencent.tmgp.sgame \
+	com.miHoYo.Yuanshen"
 
 # 需要放行的网卡，添加 wlan+ 进入可以放行Wifi
 ALLOW_LOOKUP="tun+ lo"
 
 # Be care for using
-ALLOW_UID="0"
+ALLOW_UID=0
 
 ALLOW_PORT=20822
 TCP_PORT=20802
 MARK=10086
 TUNDEV="tunDev"
 TABLE=101
-TUN_ADDR="172.24.0.7/30"
+PREF=100
+TUN_ADDR="172.24.0.1/30"
 
 v2ray_open() {
 	echo 1 > /proc/sys/net/ipv4/ip_forward
@@ -97,11 +102,11 @@ v2ray_open() {
 		--uid ${ALLOW_UID} \
 		-j ACCEPT
 	# Allow DNS query service
-	# iptables -t mangle -I OUTPUT 1 \
-		# -w 5 \
-		# -p udp \
-		# --dport 53 \
-		# -j ACCEPT
+	iptables -t mangle -I OUTPUT 1 \
+		-w 5 \
+		-p udp \
+		--dport 53 \
+		-j ACCEPT
 	for IP in ${ALLOW_IP}
 	do
 		iptables -t mangle -I PREROUTING 1 \
@@ -169,9 +174,9 @@ v2ray_open() {
 		-config ${home_path}/_v2.json \
 		-format jsonv5 \
 		&> ${home_path}/v2.log &
-	sleep 2
-	ip link set up dev ${TUNDEV} qlen 1000
+	sleep 1
 	ip address add ${TUN_ADDR} dev ${TUNDEV}
+	ip link set up dev ${TUNDEV} qlen 1000
 	ip rule add fwmark ${MARK} lookup ${TABLE} pref ${PREF}
 	ip route add default via ${TUN_ADDR%/*} dev ${TUNDEV} table ${TABLE}
 	ip -6 rule add unreachable pref ${PREF} # Deny IPV6
@@ -209,11 +214,11 @@ v2ray_close() {
 		--uid ${ALLOW_UID} \
 		-j ACCEPT
 	# Allow DNS query service
-	# iptables -t mangle -D OUTPUT \
-		# -w 5 \
-		# -p udp \
-		# --dport 53 \
-		# -j ACCEPT
+	iptables -t mangle -D OUTPUT \
+		-w 5 \
+		-p udp \
+		--dport 53 \
+		-j ACCEPT
 	for IP in ${ALLOW_IP}
 	do
 		iptables -t mangle -D PREROUTING \
