@@ -91,6 +91,7 @@
 				// "securitySettings": {}
 			// }
 		// },
+		// 百度直连
 		{
 			"tag": "cn-out2",
 			"protocol": "http",
@@ -98,29 +99,7 @@
 				"address": "127.0.0.1",
 				"port": 20802
 			}
-		},
-		{
-			"tag": "ai-out0",
-			"protocol": "vmess",
-			"settings": {
-				"address": "0.0.0.0",
-				"port": 80,
-				"uuid": "f0b4fdce-b506-11ee-8f87-2f0cc72f6658"
-			},
-			"streamSettings": {
-				"transport": "ws",
-				"transportSettings": {
-					"path": "/",
-					"header": [{
-						"key": "Host",
-						"value": "dm.toutiao.com"
-					}]
-				},
-				"security": "none",
-				"securitySettings": {}
-			}
-		},
-		{
+		}, {
 			"tag": "direct",
 			"protocol": "freedom",
 			"settings": {}
@@ -132,43 +111,27 @@
 	],
 	"router": {
 		"domainStrategy": "IpIfNonMatch",
-		"rule": [
-			{
+		"rule": [{
 				"tag": "direct",
-				"inboundTag": ["global-in0", "tun"],
 				"geoip": [{
 					"code": "private",
 					"filePath": "./geoip.dat"
 				}]
-			},
-			{
+			}, {
 				"tag": "direct",
-				"inboundTag": ["global-in0", "tun"],
 				"geoDomain": [{
 					"code": "private",
 					"filePath": "./geosite.dat"
 				}]
-			},
-			{
-				"tag": "ai-out0",
-				"inboundTag": ["global-in0", "tun"],
-				"domain": [{
-					"type": "RootDomain",
-					"value": "openai.com"
-				}]
-			},
-			{
+			}, {
 				"balancingTag": "cn-balancer",
-				"inboundTag": ["global-in0", "tun"],
 				"networks": ["tcp"],
 				"geoip": [{
 					"code": "cn",
 					"filePath": "./geoip.dat"
 				}]
-			},
-			{
+			}, {
 				"balancingTag": "cn-balancer",
-				"inboundTag": ["global-in0", "tun"],
 				"networks": ["tcp"],
 				"domainMatcher": "mph",
 				"geoDomain": [{
@@ -196,7 +159,7 @@
 			"mtu": 1500,
 			"tag": "tun",
 			"ips": [{
-				"ip": [172, 24, 0, 7],
+				"ip": [172, 24, 0, 1],
 				"prefix": 30
 			}],
 			"routes": [{
@@ -204,7 +167,13 @@
 				"prefix": 0
 			}],
 			"enablePromiscuousMode": true,
-			"enableSpoofing": true
+			"enableSpoofing": true,
+			"sniffingSettings": {
+				// 目的地址嗅探，设置为true可以更准确的路由
+				"enabled": false,
+				"destination_override": ["http", "tls"],
+				"metadata_only": false
+			}
 		}
 	}
 }
