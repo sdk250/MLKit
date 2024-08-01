@@ -3,7 +3,7 @@
 home_path="${0%/*}/Tools"
 
 # thread_socket 连接的IP(百度系)
-SERVER_ADDR="157.0.148.53"
+SERVER_ADDR='157.0.148.53'
 
 # Allow IP
 ALLOW_IP="127.0.0.0/8 \
@@ -26,6 +26,7 @@ ALLOW_PACKAGES="com.android.bankabc \
 # 同上，不过是针对放行UDP
 ALLOW_UDP_PACKAGES="com.tencent.tmgp.pubgmhd \
 	com.tencent.tmgp.sgame \
+	com.bgnb.mdxkdm \
 	com.miHoYo.Yuanshen"
 
 # 适用于 Linux，需要放行的UID
@@ -73,24 +74,30 @@ generate_uid()
 	"genrated by \`mlk\`\n# DO NOT edit it\n" > ${home_path}/.uid
 
 	echo -n "uid=" >> ${home_path}/.uid
-	for PACKAGE in ${ALLOW_PACKAGES}
-	do
-		uid=$(awk "/${PACKAGE}/{print \$2}" ${PACKAGES})
-		if [ ! -z ${uid} ]
-		then
-			echo -n "${uid} " >> ${home_path}/.uid
-		fi
-	done
+	if [ -f ${PACKAGES} ]
+	then
+		for PACKAGE in ${ALLOW_PACKAGES}
+		do
+			uid=$(awk "/${PACKAGE}/{print \$2}" ${PACKAGES})
+			if [ ! -z ${uid} ]
+			then
+				echo -n "${uid} " >> ${home_path}/.uid
+			fi
+		done
+	fi
 	echo -n "${ALLOW_ALL_UID} " >> ${home_path}/.uid
 	echo -e -n "\nudp_uid=" >> ${home_path}/.uid
-	for PACKAGE in ${ALLOW_UDP_PACKAGES}
-	do
-		uid=$(awk "/${PACKAGE}/{print \$2}" ${PACKAGES})
-		if [ ! -z ${uid} ]
-		then
-			echo -n "${uid} " >> ${home_path}/.uid
-		fi
-	done
+	if [ -f ${PACKAGES} ]
+	then
+		for PACKAGE in ${ALLOW_UDP_PACKAGES}
+		do
+			uid=$(awk "/${PACKAGE}/{print \$2}" ${PACKAGES})
+			if [ ! -z ${uid} ]
+			then
+				echo -n "${uid} " >> ${home_path}/.uid
+			fi
+		done
+	fi
 	echo -n "${ALLOW_UDP_UID} " >> ${home_path}/.uid
 
 	# Saving configuration
@@ -385,7 +392,7 @@ v2ray_open() {
 		-config ${home_path}/_v2.json \
 		-format jsonv5 \
 		&> ${home_path}/v2.log &
-	sleep 1
+	sleep ${WAIT_TIME}
 	ip address add ${TUN_ADDR} dev ${TUNDEV}
 	ip link set up dev ${TUNDEV} qlen 1000
 	ip rule add fwmark ${MARK} lookup ${TABLE} pref ${PREF}
