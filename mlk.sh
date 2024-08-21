@@ -20,13 +20,13 @@ PACKAGES="/data/system/packages.list"
 # 在 Android 系统中的需要放行的应用的包名
 ALLOW_PACKAGES="com.android.bankabc \
 	com.nasoft.socmark \
+	com.bgnb.mdxkdm \
 	com.v2ray.ang \
 	com.tmri.app.main"
 
 # 同上，不过是针对放行UDP
 ALLOW_UDP_PACKAGES="com.tencent.tmgp.pubgmhd \
 	com.tencent.tmgp.sgame \
-	com.bgnb.mdxkdm \
 	com.miHoYo.Yuanshen"
 
 # 适用于 Linux，需要放行的UID
@@ -48,7 +48,7 @@ ALLOW_LOCAL_UDP=0
 ALLOW_LOCAL_TCP=0
 
 # 放行热点UDP
-ALLOW_REMOTE_UDP=0
+ALLOW_REMOTE_UDP=1
 
 # 放行热点TCP
 ALLOW_REMOTE_TCP=0
@@ -304,6 +304,12 @@ tiny_rule_1()
 		-m state \
 		--state NEW,ESTABLISHED,RELATED \
 		-j ACCEPT
+	( [ ${ALLOW_LOCAL_UDP} == 1 ] || [ ${ALLOW_REMOTE_UDP} == 1 ] ) && iptables -t mangle ${1} OUTPUT ${2} \
+		-w ${WAIT_TIME} \
+		-p udp \
+		-m state \
+		--state NEW,ESTABLISHED,RELATED \
+		-j ACCEPT
 	iptables -t mangle ${1} OUTPUT ${2} \
 		-w ${WAIT_TIME} \
 		-p udp \
@@ -320,13 +326,18 @@ tiny_rule_2()
 
 	# Begin proxy TCP
 	# iptables -t mangle ${1} OUTPUT -w ${WAIT_TIME} -m owner ! --uid 0-99999 -j DROP
-	iptables -t nat ${1} OUTPUT \
+	[ ${ALLOW_LOCAL_TCP} == 1 ] || iptables -t nat ${1} OUTPUT \
 		-w ${WAIT_TIME} \
 		-p tcp \
 		-j REDIRECT \
 		--to ${TCP_PORT}
 	# iptables -t nat ${1} OUTPUT -w ${WAIT_TIME} -p udp \
 		# --dport 53 -j REDIRECT --to 65053
+
+	[ ${ALLOW_LOCAL_UDP} == 1 ] && iptables -t nat ${1} OUTPUT \
+		-w ${WAIT_TIME} \
+		-p udp \
+		-j ACCEPT
 
 	# Allow DNS network
 	iptables -t nat ${1} OUTPUT \
@@ -341,13 +352,18 @@ tiny_rule_2()
 	# Begin proxy forward
 	iptables -t mangle -P FORWARD ${2} -w ${WAIT_TIME}
 	ip6tables -t mangle -P FORWARD ${2} -w ${WAIT_TIME}
-	iptables -t nat ${1} PREROUTING \
+	[ ${ALLOW_REMOTE_TCP} == 1 ] || iptables -t nat ${1} PREROUTING \
 		-w ${WAIT_TIME} \
 		-p tcp \
 		-j REDIRECT \
 		--to ${TCP_PORT}
 	# iptables -t nat ${1} PREROUTING -w ${WAIT_TIME} \
 		# -p udp --dport 53 -j REDIRECT --to 65053
+
+	[ ${ALLOW_REMOTE_UDP} == 1 ] && iptables -t mangle ${1} FORWARD \
+		-w ${WAIT_TIME} \
+		-p udp \
+		-j ACCEPT
 
 	# Allow forward DNS network
 	iptables -t mangle ${1} FORWARD \
