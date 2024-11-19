@@ -8,14 +8,16 @@
 ## `t` 模式
 出口为 `thread_socket` ，仅有中国的IP
 ## `v` 模式
-出口为 `v2ray` 与 `thread_socket` ，即拥有中国的IP地址与v2ray(自配置)的IP。
+出口为 `v2ray` 与 `thread_socket` ，即拥有中国的IP地址与v2ray(自配置)的IP。（由于 `x` 模式的出现， `v` 模式后续可能会被移除）
+## `x` 模式
+核心为 `xray` ，功能与 `v` 模式相同，但稳定性非常高，非常推荐使用，后续可能会将 `v` 模式移除。
 ## `s` 模式
 查看 `MLKit` 的运行状态
 # 使用方法 & 配置修改
 ```shell
 mlk.sh <mode>
 ```
-`mode` 为 `t` 、`s` 或 `v`。
+`mode` 为 `t` 、`s` 、 `x` 或 `v`。
 ## 配置修改
 - 对于 `_v2.json` ，有<br>
 修改或增加服务器在 `outbounds` 这个键中,第30行开始<br>
