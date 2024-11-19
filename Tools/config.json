@@ -1,0 +1,175 @@
+{
+  "log": {
+    "access": "none",
+    "error": "none",
+    "level": "none",
+    "dnsLog": false
+  },
+  "dns": {
+    "hosts": {
+      "local": "127.0.0.1"
+    },
+    "servers": [
+      "119.29.29.29"
+    ],
+    "disableCache": false,
+    "tag": "dns"
+  },
+  "routing": {
+    "domainStrategy": "AsIs",
+    "domainMatcher": "hybrid",
+    "rules": [{
+      "type": "field",
+      "port": "53,5353,853",
+      "inboundTag": ["in-global"],
+      "outboundTag": "out-dns",
+      "ruleTag": "DNS - OUT"
+    }, {
+      "type": "field",
+      "inboundTag": ["dns"],
+      "outboundTag": "out-direct",
+      "ruleTag": "DNS - OUT"
+    }, {
+      "type": "field",
+      "domain": ["geosite:category-ads-all"],
+      "inboundTag": ["in-global"],
+      "outboundTag": "out-block",
+      "ruleTag": "AD - OUT"
+    // }, {
+    //   "type": "field",
+    //   "domain": ["domain:openai.com", "domain:chatgpt.com"],
+    //   "inboundTag": ["in-global"],
+    //   "outboundTag": "out-ai",
+    //   "ruleTag": "AI - OUT"
+    }, {
+      "type": "field",
+      "ip": ["geoip:cn"],
+      "inboundTag": ["in-global"],
+      "outboundTag": "out-cn",
+      "ruleTag": "CN - OUT"
+    }, {
+      "type": "field",
+      "domain": ["geosite:cn"],
+      "inboundTag": ["in-global"],
+      "outboundTag": "out-cn",
+      "ruleTag": "CN - OUT"
+    }, {
+      "type": "field",
+      "inboundTag": ["in-global"],
+      "outboundTag": "out-global",
+      "ruleTag": "GLOBAL - OUT"
+    }]
+  },
+  "policy": {},
+  "inbounds": [{
+    "tag": "in-global",
+    "listen": "0.0.0.0",
+    "port": 20801,
+    "protocol": "dokodemo-door",
+    "settings": {
+      "network": "tcp,udp",
+      "followRedirect": true
+    },
+    "streamSettings": {
+      "sockopt": {
+        "tproxy": "tproxy"
+      }
+    },
+    "sniffing": {
+      "enabled": true,
+      "destOverride": ["http", "tls"],
+      "metadataOnly": true,
+      "routeOnly": true
+    }
+  }],
+  "outbounds": [{
+    "tag": "out-global",
+    "protocol": "vmess",
+    "settings": {
+      "vnext": [{
+        "address": "8.8.8.8",
+        "port": 80,
+        "users": [{
+          "id": "2d1ebedb-8936-473b-9dbb-7564fbf70e97",
+          "security": "auto"
+        }]
+      }]
+    },
+    "streamSettings": {
+      // TCP 传输方法
+      "network": "raw",
+      "security": "none",
+      "rawSettings": {
+        "header": {
+          "type": "http",
+          "request": {
+            "headers": {
+              "Host": ["dm.toutiao.com"]
+            }
+          }
+        }
+      }
+      // WebSocket 传输方法
+      // "network": "ws",
+      // "wsSettings": {
+        // "path": "/",
+        // "headers": {
+          // "Host": "dm.toutiao.com"
+        // }
+      // }
+    }
+  }, {
+    "tag": "out-cn",
+    "protocol": "vmess",
+    "settings": {
+      "vnext": [{
+        "address": "8.8.8.8",
+        "port": 443,
+        "users": [{
+          "id": "2d1ebedb-8936-473b-9dbb-7564fbf70e97",
+          "security": "auto"
+        }]
+      }]
+    },
+    "streamSettings": {
+      "network": "ws",
+      "wsSettings": {
+        "path": "/",
+        "headers": {
+          "Host": "dm.toutiao.com"
+        }
+      }
+    }
+  }, {
+    "tag": "out-ai",
+    "protocol": "vmess",
+    "settings": {
+      "vnext": [{
+        "address": "8.8.8.8",
+        "port": 57351,
+        "users": [{
+          "id": "e8851564-b1cf-4fe7-ac87-b903f1386678",
+          "security": "auto"
+        }]
+      }]
+    },
+    "streamSettings": {
+      "network": "ws",
+      "wsSettings": {
+        "path": "/head?ed=2048",
+        "headers": {
+          "Host": "host"
+        }
+      }
+    }
+  }, {
+    "tag": "out-dns",
+    "protocol": "dns"
+  }, {
+    "tag": "out-direct",
+    "protocol": "freedom"
+  }, {
+    "tag": "out-block",
+    "protocol": "blackhole"
+  }]
+}

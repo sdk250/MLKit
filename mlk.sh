@@ -3,7 +3,7 @@
 home_path="${0%/*}/Tools"
 
 # thread_socket 连接的IP(百度系)
-SERVER_ADDR='157.0.148.53'
+SERVER_ADDR='110.242.70.69'
 
 # Allow IP
 ALLOW_IP="127.0.0.0/8 \
@@ -11,7 +11,10 @@ ALLOW_IP="127.0.0.0/8 \
 	172.16.0.0/12 \
 	169.254.0.0/16 \
 	224.0.0.0/4 \
-	192.168/16 \
+	192.168.0.0/16 \
+	100.64.0.0/10 \
+	240.0.0.0/4 \
+	255.255.255.255/32 \
 	${SERVER_ADDR}/32"
 
 # 仅适用于Android系统
@@ -62,6 +65,7 @@ ALLOW_UID=0
 ALLOW_PORT=20822
 TCP_PORT=20802
 MARK=10086
+GID=10086
 TUNDEV='tunDev'
 TABLE=101
 PREF=100
@@ -73,7 +77,7 @@ generate_uid()
 	echo -e "# This file is automatical" \
 	"genrated by \`mlk\`\n# DO NOT edit it\n" > ${home_path}/.uid
 
-	echo -n "uid=" >> ${home_path}/.uid
+	echo -n "ALLOW_ALL_UID=" >> ${home_path}/.uid
 	if [ -f ${PACKAGES} ]
 	then
 		for PACKAGE in ${ALLOW_PACKAGES}
@@ -86,7 +90,7 @@ generate_uid()
 		done
 	fi
 	echo -n "${ALLOW_ALL_UID} " >> ${home_path}/.uid
-	echo -e -n "\nudp_uid=" >> ${home_path}/.uid
+	echo -e -n "\nALLOW_UDP_UID=" >> ${home_path}/.uid
 	if [ -f ${PACKAGES} ]
 	then
 		for PACKAGE in ${ALLOW_UDP_PACKAGES}
@@ -107,8 +111,6 @@ generate_uid()
 	echo "PACKAGES=${PACKAGES}" >> ${home_path}/.uid
 	echo "ALLOW_PACKAGES=${ALLOW_PACKAGES}" >> ${home_path}/.uid
 	echo "ALLOW_UDP_PACKAGES=${ALLOW_UDP_PACKAGES}" >> ${home_path}/.uid
-	echo "ALLOW_ALL_UID=${ALLOW_ALL_UID}" >> ${home_path}/.uid
-	echo "ALLOW_UDP_UID=${ALLOW_UDP_UID}" >> ${home_path}/.uid
 	echo "ALLOW_LOCAL_DNS=${ALLOW_LOCAL_DNS}" >> ${home_path}/.uid
 	echo "ALLOW_REMOTE_DNS=${ALLOW_REMOTE_DNS}" >> ${home_path}/.uid
 	echo "ALLOW_LOCAL_UDP=${ALLOW_LOCAL_UDP}" >> ${home_path}/.uid
@@ -223,6 +225,45 @@ allow_core()
 			-w ${WAIT_TIME} \
 			-o ${LOOKUP} \
 			-j ACCEPT
+	done
+}
+
+xray_rule()
+{
+	ip rule ${1} fwmark ${MARK} table 100 pref 100
+	ip route ${1} local default dev lo table 100
+
+	iptables -t mangle -${2} XRAY -p udp --dport 67:68 -j RETURN
+	iptables -t mangle -${2} XRAY_MASK -m owner --gid ${GID} -j RETURN
+	for IP in ${ALLOW_IP}
+	do
+		for PROTO in tcp udp
+		do
+			iptables -t mangle -${2} XRAY -p ${PROTO} -m multiport ! --dports 53,5353,853 -d ${IP} -j RETURN
+			iptables -t mangle -${2} XRAY_MASK -p ${PROTO} -m multiport ! --dports 53,5353,853 -d ${IP} -j RETURN
+		done
+	done
+	for UID in ${ALLOW_ALL_UID}
+	do
+		if [ ! -z ${UID} ]
+		then
+			iptables -t mangle -${2} XRAY_MASK -m owner --uid ${UID} -j RETURN
+		fi
+	done
+	for UID in ${ALLOW_UDP_UID}
+	do
+		if [ ! -z ${UID} ]
+		then
+			iptables -t mangle -${2} XRAY_MASK -m owner --uid ${UID} -p udp -j RETURN
+		fi
+	done
+
+	for PROTO in tcp udp
+	do
+		iptables -t mangle -${2} XRAY -p ${PROTO} -j TPROXY --on-port 20801 --tproxy-mark ${MARK}
+		iptables -t mangle -${2} XRAY_MASK -p ${PROTO} -j MARK --set-mark ${MARK}
+		iptables -t mangle -${2} PREROUTING -w 2 -p ${PROTO} -j XRAY
+		iptables -t mangle -${2} OUTPUT -w 2 -p ${PROTO} -j XRAY_MASK
 	done
 }
 
@@ -454,6 +495,49 @@ v2ray_close() {
 	mv ${0%/*}/enabled ${0%/*}/disabled
 }
 
+xray_open() {
+	which busybox &> /dev/null
+	if [ 0 != $? ]
+	then
+		echo 'Your system is not supported busybox!'
+		exit 2
+	fi
+
+	generate_uid
+	load_configuration
+
+	busybox nohup setuidgid 0:${GID} ${home_path}/xray -c ${home_path}/config.json 2>&1 > ${home_path}/xray.log &
+	${home_path}/thread_socket \
+		-p ${TCP_PORT} \
+		-u ${ALLOW_UID} \
+		-r ${SERVER_ADDR} \
+		-d &> ${home_path}/sock.log
+	iptables -t mangle -N XRAY
+	iptables -t mangle -N XRAY_MASK
+	xray_rule add A
+
+	# ip -6 rule add unreachable pref ${PREF} # Deny IPV6
+
+	mv ${0%/*}/disabled ${0%/*}/enabled && echo "xray" > ${0%/*}/enabled
+	echo -e "\x1b[92mXray Done.\x1b[0m"
+	exit 0
+}
+
+xray_close() {
+	load_configuration
+
+	xray_rule del D
+	iptables -t mangle -X XRAY
+	iptables -t mangle -X XRAY_MASK
+
+	# ip -6 rule del pref ${PREF} # Allow IPV6
+	killall xray \
+		thread_socket
+
+	rm -f ${home_path}/.uid
+	mv ${0%/*}/enabled ${0%/*}/disabled
+}
+
 tiny_open() {
 	echo 1 > /proc/sys/net/ipv4/ip_forward
 	echo 1 > /proc/sys/net/ipv4/ip_dynaddr
@@ -493,6 +577,23 @@ tiny_close() {
 	mv ${0%/*}/enabled ${0%/*}/disabled
 }
 
+close() {
+	case $(cat ${0%/*}/enabled) in
+		'thread_socket')
+			tiny_close
+			;;
+		'v2ray')
+			v2ray_close
+			;;
+		'xray')
+			xray_close
+			;;
+		*)
+			echo 'Undefined error.'
+			exit 127
+	esac
+}
+
 if [ -f ${0%/*}/disabled ]
 then
 	if [ ${#} -eq 1 ]
@@ -503,9 +604,13 @@ then
 		elif [ ${1} == "v" ]
 		then
 			v2ray_open
+		elif [ 'x' == ${1} ]
+		then
+			xray_open
 		elif [ 's' == ${1} ]
 		then
 			echo 'MLKit is stopped.'
+			exit 0
 		else
 			echo "Undefined core."
 			exit -1
@@ -519,41 +624,44 @@ then
 	if [ ${#} -eq 1 ]
 	then
 		status=$(cat ${0%/*}/enabled)
-		if [ ${1} == "t" ]
-		then
-			if [ "v2ray" == ${status} ]
-			then
-				v2ray_close
-				tiny_open
-			elif [ "thread_socket" == ${status} ]
-			then
-				tiny_close
+		case ${1} in
+			't')
+				if [ 'thread_socket' == ${status} ]
+				then
+					tiny_close
+					exit 0
+				else
+					close
+					tiny_open
+				fi
+				;;
+			'v')
+				if [ 'v2ray' == ${status} ]
+				then
+					v2ray_close
+					exit 0
+				else
+					close
+					v2ray_open
+				fi
+				;;
+			'x')
+				if [ 'xray' == ${status} ]
+				then
+					xray_close
+					exit 0
+				else
+					close
+					xray_open
+				fi
+				;;
+			's')
+				echo "MLKit is running. (${status})"
 				exit 0
-			else
-				echo "Undefined error."
-				exit -2
-			fi
-		elif [ ${1} == "v" ]
-		then
-			if [ "thread_socket" == ${status} ]
-			then
-				tiny_close
-				v2ray_open
-			elif [ "v2ray" == ${status} ]
-			then
-				v2ray_close
-				exit 0
-			else
-				echo "Undefined error."
-				exit -2
-			fi
-		elif [ 's' == ${1} ]
-		then
-			echo "MLKit is running. (${status})"
-		else
-			echo "Selecting core is invalid."
-			exit -3
-		fi
+				;;
+			*)
+				echo "Core selected is invalid."
+		esac
 	else
 		echo "Need a parameter of core."
 		exit -3
