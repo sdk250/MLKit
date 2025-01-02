@@ -17,6 +17,8 @@ ALLOW_IP="127.0.0.0/8 \
 	255.255.255.255/32 \
 	${SERVER_ADDR}/32"
 
+ENABLE_IPv6=1
+
 # 仅适用于Android系统
 PACKAGES="/data/system/packages.list"
 
@@ -82,7 +84,7 @@ generate_uid()
 	then
 		for PACKAGE in ${ALLOW_PACKAGES}
 		do
-			uid=$(awk "/${PACKAGE}/{print \$2}" ${PACKAGES})
+			uid=$(awk "/^${PACKAGE} /{print \$2}" ${PACKAGES})
 			if [ ! -z ${uid} ]
 			then
 				echo -n "${uid} " >> ${home_path}/.uid
@@ -95,7 +97,7 @@ generate_uid()
 	then
 		for PACKAGE in ${ALLOW_UDP_PACKAGES}
 		do
-			uid=$(awk "/${PACKAGE}/{print \$2}" ${PACKAGES})
+			uid=$(awk "/^${PACKAGE} /{print \$2}" ${PACKAGES})
 			if [ ! -z ${uid} ]
 			then
 				echo -n "${uid} " >> ${home_path}/.uid
@@ -232,6 +234,11 @@ xray_rule()
 {
 	ip rule ${1} fwmark ${MARK} table 100 pref 100
 	ip route ${1} local default dev lo table 100
+	if [ ${ENABLE_IPv6} == 1 ]
+	then
+		ip -6 rule ${1} fwmark ${MARK} table ${TABLE}
+		ip -6 route ${1} local ::/0 dev lo table ${TABLE}
+	fi
 
 	iptables -t mangle -${2} XRAY -p udp --dport 67:68 -j RETURN
 	iptables -t mangle -${2} XRAY_MASK -m owner --gid ${GID} -j RETURN
@@ -242,6 +249,14 @@ xray_rule()
 			iptables -t mangle -${2} XRAY -p ${PROTO} -m multiport ! --dports 53,5353,853 -d ${IP} -j RETURN
 			iptables -t mangle -${2} XRAY_MASK -p ${PROTO} -m multiport ! --dports 53,5353,853 -d ${IP} -j RETURN
 		done
+	done
+	for LOOKUP in ${ALLOW_LOOKUP}
+	do
+		# Allow lookup
+		iptables -t mangle -${2} OUTPUT \
+			-w ${WAIT_TIME} \
+			-o ${LOOKUP} \
+			-j ACCEPT
 	done
 	for UID in ${ALLOW_ALL_UID}
 	do
@@ -506,7 +521,7 @@ xray_open() {
 	generate_uid
 	load_configuration
 
-	busybox nohup setuidgid 0:${GID} ${home_path}/xray -c ${home_path}/config.json 2>&1 > ${home_path}/xray.log &
+	busybox nohup busybox setuidgid 0:${GID} ${home_path}/xray run -c ${home_path}/config.json 2>&1 > ${home_path}/xray.log &
 	${home_path}/thread_socket \
 		-p ${TCP_PORT} \
 		-u ${ALLOW_UID} \
@@ -516,7 +531,10 @@ xray_open() {
 	iptables -t mangle -N XRAY_MASK
 	xray_rule add A
 
-	# ip -6 rule add unreachable pref ${PREF} # Deny IPV6
+	if [ ${ENABLE_IPv6} == 0 ]
+	then
+		ip -6 rule add unreachable pref ${PREF} # Deny IPV6
+	fi
 
 	mv ${0%/*}/disabled ${0%/*}/enabled && echo "xray" > ${0%/*}/enabled
 	echo -e "\x1b[92mXray Done.\x1b[0m"
@@ -530,7 +548,11 @@ xray_close() {
 	iptables -t mangle -X XRAY
 	iptables -t mangle -X XRAY_MASK
 
-	# ip -6 rule del pref ${PREF} # Allow IPV6
+	if [ ${ENABLE_IPv6} == 0 ]
+	then
+		ip -6 rule del pref ${PREF} # Allow IPV6
+	fi
+
 	killall xray \
 		thread_socket
 
