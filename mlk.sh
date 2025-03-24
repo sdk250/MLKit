@@ -1,3 +1,4 @@
+#!/system/bin/sh
 # Powered by sdk250
 
 home_path="${0%/*}/Tools"
@@ -6,7 +7,7 @@ home_path="${0%/*}/Tools"
 SERVER_ADDR='110.242.70.69'
 
 # Allow IP
-ALLOW_IP="127.0.0.0/8 \
+ALLOW_IP="127.0.0.1/32 \
 	10.0.0.0/8 \
 	172.16.0.0/12 \
 	169.254.0.0/16 \
@@ -16,6 +17,10 @@ ALLOW_IP="127.0.0.0/8 \
 	240.0.0.0/4 \
 	255.255.255.255/32 \
 	${SERVER_ADDR}/32"
+
+ALLOW_IPv6="fe80::/64"
+
+LOCAL_IPv6=''
 
 ENABLE_IPv6=1
 
@@ -110,6 +115,9 @@ generate_uid()
 	echo -e -n '\n' >> ${home_path}/.uid
 	echo "SERVER_ADDR=${SERVER_ADDR}" >> ${home_path}/.uid
 	echo "ALLOW_IP=${ALLOW_IP}" >> ${home_path}/.uid
+	echo "ALLOW_IPv6=${ALLOW_IPv6}" >> ${home_path}/.uid
+	echo "LOCAL_IPv6=${LOCAL_IPv6}" >> ${home_path}/.uid
+	echo "ENABLE_IPv6=${ENABLE_IPv6}" >> ${home_path}/.uid
 	echo "PACKAGES=${PACKAGES}" >> ${home_path}/.uid
 	echo "ALLOW_PACKAGES=${ALLOW_PACKAGES}" >> ${home_path}/.uid
 	echo "ALLOW_UDP_PACKAGES=${ALLOW_UDP_PACKAGES}" >> ${home_path}/.uid
@@ -155,6 +163,9 @@ load_configuration()
 {
 	SERVER_ADDR=$(find_configuration SERVER_ADDR)
 	ALLOW_IP=$(find_configuration ALLOW_IP)
+	ALLOW_IPv6=$(find_configuration ALLOW_IPv6)
+	LOCAL_IPv6=$(find_configuration LOCAL_IPv6)
+	ENABLE_IPv6=$(find_configuration ENABLE_IPv6)
 	PACKAGES=$(find_configuration PACKAGES)
 	ALLOW_PACKAGES=$(find_configuration ALLOW_PACKAGES)
 	ALLOW_UDP_PACKAGES=$(find_configuration ALLOW_UDP_PACKAGES)
@@ -230,55 +241,111 @@ allow_core()
 	done
 }
 
+ip46tables()
+{
+	iptables ${@}
+	[ ${ENABLE_IPv6} == 1 ] && ip6tables ${@}
+}
+
 xray_rule()
 {
-	ip rule ${1} fwmark ${MARK} table 100 pref 100
-	ip route ${1} local default dev lo table 100
-	if [ ${ENABLE_IPv6} == 1 ]
-	then
-		ip -6 rule ${1} fwmark ${MARK} table ${TABLE}
-		ip -6 route ${1} local ::/0 dev lo table ${TABLE}
-	fi
+	ip rule ${1} fwmark ${MARK} lookup ${TABLE} pref ${PREF}
+	ip route ${1} local default dev lo table ${TABLE}
 
-	iptables -t mangle -${2} XRAY -p udp --dport 67:68 -j RETURN
-	iptables -t mangle -${2} XRAY_MASK -m owner --gid ${GID} -j RETURN
+	ip46tables -t mangle -${2} PREROUTING -p udp --dport 67:68 -j ACCEPT
+
 	for IP in ${ALLOW_IP}
 	do
 		for PROTO in tcp udp
 		do
-			iptables -t mangle -${2} XRAY -p ${PROTO} -m multiport ! --dports 53,5353,853 -d ${IP} -j RETURN
-			iptables -t mangle -${2} XRAY_MASK -p ${PROTO} -m multiport ! --dports 53,5353,853 -d ${IP} -j RETURN
+			iptables -t mangle -${2} XRAY \
+				-p ${PROTO} \
+				-m multiport ! --dports 53,853 \
+				-d ${IP} -j RETURN
+			iptables -t mangle -${2} XRAY_MASK \
+				-p ${PROTO} \
+				-m multiport ! --dports 53,853 \
+				-d ${IP} -j RETURN
 		done
 	done
-	for LOOKUP in ${ALLOW_LOOKUP}
-	do
-		# Allow lookup
-		iptables -t mangle -${2} OUTPUT \
-			-w ${WAIT_TIME} \
-			-o ${LOOKUP} \
-			-j ACCEPT
-	done
+
+	if [ ${ENABLE_IPv6} == 1 ]
+	then
+		ip -6 rule ${1} fwmark ${MARK} lookup ${TABLE} pref ${PREF}
+		ip -6 route ${1} local default dev lo table ${TABLE}
+
+		ip6tables -t mangle -${2} PREROUTING -d ${LOCAL_IPv6} -j ACCEPT 2> /dev/null
+
+		for IP in ${ALLOW_IPv6}
+		do
+			for PROTO in tcp udp
+			do
+				ip6tables -t mangle -${2} XRAY \
+					-p ${PROTO} \
+					-m multiport ! --dports 53,853 \
+					-d ${IP} -j RETURN
+				ip6tables -t mangle -${2} XRAY_MASK \
+					-p ${PROTO} \
+					-m multiport ! --dports 53,853 \
+					-d ${IP} -j RETURN
+			done
+		done
+
+		# ip6tables -t mangle -${2} PREROUTING -s fe80::/64 -j DROP
+		# ip6tables -t mangle -${2} PREROUTING -d fe80::/64 -j DROP
+	fi
+
+	# for LOOKUP in ${ALLOW_LOOKUP}
+	# do
+		# # Allow lookup
+		# ip46tables -t mangle -${2} OUTPUT \
+			# -w ${WAIT_TIME} \
+			# -o ${LOOKUP} \
+			# -j ACCEPT
+	# done
 	for UID in ${ALLOW_ALL_UID}
 	do
-		if [ ! -z ${UID} ]
-		then
-			iptables -t mangle -${2} XRAY_MASK -m owner --uid ${UID} -j RETURN
-		fi
+		[ -z ${UID} ] || \
+			ip46tables -t mangle -${2} XRAY_MASK \
+				-m owner --uid ${UID} -j RETURN
 	done
 	for UID in ${ALLOW_UDP_UID}
 	do
-		if [ ! -z ${UID} ]
-		then
-			iptables -t mangle -${2} XRAY_MASK -m owner --uid ${UID} -p udp -j RETURN
-		fi
+		[ -z ${UID} ] || \
+			ip46tables -t mangle -${2} XRAY_MASK \
+				-p udp -m owner --uid ${UID} -j RETURN
 	done
 
+	[ ${ALLOW_REMOTE_UDP} == 1 ] && iptables -t mangle -${2} PREROUTING \
+		-s 192.168/16 \
+		-p udp \
+		-m multiport ! --dports 53,853 \
+		-j ACCEPT
+	[ ${ALLOW_REMOTE_UDP} == 1 ] && [ ${ENABLE_IPv6} == 1 ] && ip6tables \
+		-t mangle \
+		-${2} PREROUTING \
+		-s fe80::/64 \
+		-p udp \
+		-m multiport ! --dports 53,853 \
+		-j ACCEPT
 	for PROTO in tcp udp
 	do
-		iptables -t mangle -${2} XRAY -p ${PROTO} -j TPROXY --on-port 20801 --tproxy-mark ${MARK}
-		iptables -t mangle -${2} XRAY_MASK -p ${PROTO} -j MARK --set-mark ${MARK}
-		iptables -t mangle -${2} PREROUTING -w 2 -p ${PROTO} -j XRAY
-		iptables -t mangle -${2} OUTPUT -w 2 -p ${PROTO} -j XRAY_MASK
+		iptables -t mangle -${2} XRAY \
+			-p ${PROTO} \
+			-j TPROXY \
+			--on-ip 127.0.0.1 --on-port 20801 --tproxy-mark ${MARK}
+		[ ${ENABLE_IPv6} == 1 ] && ip6tables -t mangle -${2} XRAY \
+			-p ${PROTO} \
+			-j TPROXY \
+			--on-ip ::1 --on-port 20801 --tproxy-mark ${MARK}
+
+		ip46tables -t mangle -${2} XRAY_MASK -p ${PROTO} \
+			-j MARK --set-mark ${MARK}
+
+		ip46tables -t mangle -${2} PREROUTING -w 2 -p ${PROTO} -j XRAY
+		ip46tables -t mangle -${2} OUTPUT -w 2 \
+			-p ${PROTO} \
+			-m owner ! --gid ${GID} -j XRAY_MASK
 	done
 }
 
@@ -360,7 +427,8 @@ tiny_rule_1()
 		-m state \
 		--state NEW,ESTABLISHED,RELATED \
 		-j ACCEPT
-	( [ ${ALLOW_LOCAL_UDP} == 1 ] || [ ${ALLOW_REMOTE_UDP} == 1 ] ) && iptables -t mangle ${1} OUTPUT ${2} \
+	( [ ${ALLOW_LOCAL_UDP} == 1 ] || [ ${ALLOW_REMOTE_UDP} == 1 ] ) && \
+		iptables -t mangle ${1} OUTPUT ${2} \
 		-w ${WAIT_TIME} \
 		-p udp \
 		-m state \
@@ -518,23 +586,29 @@ xray_open() {
 		exit 2
 	fi
 
+	if [ ${ENABLE_IPv6} == 1 ]
+	then
+		LOCAL_IPv6="$(curl -6s http://6.ipw.cn)/128"
+		[ ${LOCAL_IPv6} == '/128' ] && LOCAL_IPv6='' && echo 'Refresh failed.'
+	fi
+
 	generate_uid
 	load_configuration
 
-	busybox nohup busybox setuidgid 0:${GID} ${home_path}/xray run -c ${home_path}/config.json 2>&1 > ${home_path}/xray.log &
+	busybox nohup \
+		busybox setuidgid 0:${GID} \
+		${home_path}/xray run \
+		-c ${home_path}/config.json 2>&1 > ${home_path}/xray.log &
 	${home_path}/thread_socket \
 		-p ${TCP_PORT} \
 		-u ${ALLOW_UID} \
 		-r ${SERVER_ADDR} \
 		-d &> ${home_path}/sock.log
-	iptables -t mangle -N XRAY
-	iptables -t mangle -N XRAY_MASK
+	ip46tables -t mangle -N XRAY
+	ip46tables -t mangle -N XRAY_MASK
 	xray_rule add A
 
-	if [ ${ENABLE_IPv6} == 0 ]
-	then
-		ip -6 rule add unreachable pref ${PREF} # Deny IPV6
-	fi
+	[ ${ENABLE_IPv6} == 0 ] && ip -6 rule add unreachable pref ${PREF} # Deny IPV6
 
 	mv ${0%/*}/disabled ${0%/*}/enabled && echo "xray" > ${0%/*}/enabled
 	echo -e "\x1b[92mXray Done.\x1b[0m"
@@ -545,13 +619,10 @@ xray_close() {
 	load_configuration
 
 	xray_rule del D
-	iptables -t mangle -X XRAY
-	iptables -t mangle -X XRAY_MASK
+	ip46tables -t mangle -X XRAY
+	ip46tables -t mangle -X XRAY_MASK
 
-	if [ ${ENABLE_IPv6} == 0 ]
-	then
-		ip -6 rule del pref ${PREF} # Allow IPV6
-	fi
+	[ ${ENABLE_IPv6} == 0 ] && ip -6 rule del pref ${PREF} # Allow IPV6
 
 	killall xray \
 		thread_socket
@@ -643,7 +714,7 @@ then
 	fi
 elif [ -f ${0%/*}/enabled ]
 then
-	if [ ${#} -eq 1 ]
+	if [ ${#} -le 2 ]
 	then
 		status=$(cat ${0%/*}/enabled)
 		case ${1} in
@@ -668,6 +739,41 @@ then
 				fi
 				;;
 			'x')
+				if [ 'r' == "${2}" ]
+				then
+					load_configuration
+					origin_LOCAL_IPv6=${LOCAL_IPv6}
+					if [ 1 == ${ENABLE_IPv6} ]
+					then
+						ip46tables -t mangle \
+							-D PREROUTING \
+							-w 2 -p tcp -j XRAY
+						ip46tables -t mangle \
+							-D OUTPUT \
+							-w 2 \
+							-p tcp \
+							-m owner ! --gid ${GID} -j XRAY_MASK
+
+						LOCAL_IPv6="$(curl -6s http://6.ipw.cn)/128"
+						[ ${LOCAL_IPv6} == '/128' ] && LOCAL_IPv6='' && echo 'Refresh failed.'
+						ip6tables -t mangle \
+							-D PREROUTING -d ${origin_LOCAL_IPv6} -j ACCEPT 2> /dev/null
+						ip6tables -t mangle \
+							-I PREROUTING -d ${LOCAL_IPv6} -j ACCEPT 2> /dev/null
+						ip46tables -t mangle \
+							-A PREROUTING -w 2 -p tcp -j XRAY
+						ip46tables -t mangle \
+							-A OUTPUT \
+							-w 2 \
+							-p tcp \
+							-m owner ! --gid ${GID} -j XRAY_MASK
+						ALLOW_ALL_UID=''
+						ALLOW_UDP_UID=''
+						generate_uid
+						echo "Refresh IPv6!"
+					fi
+					exit 0
+				fi
 				if [ 'xray' == ${status} ]
 				then
 					xray_close
