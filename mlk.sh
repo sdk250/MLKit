@@ -4,7 +4,7 @@
 home_path="${0%/*}/Tools"
 
 # thread_socket 连接的IP(百度系)
-SERVER_ADDR='110.242.70.69'
+SERVER_ADDR='110.242.70.68'
 
 # Allow IP
 ALLOW_IP="127.0.0.1/32 \
@@ -30,7 +30,6 @@ PACKAGES="/data/system/packages.list"
 # 在 Android 系统中的需要放行的应用的包名
 ALLOW_PACKAGES="com.android.bankabc \
 	com.nasoft.socmark \
-	com.bgnb.mdxkdm \
 	com.v2ray.ang \
 	com.tmri.app.main"
 
@@ -85,34 +84,11 @@ generate_uid()
 	"genrated by \`mlk\`\n# DO NOT edit it\n" > ${home_path}/.uid
 
 	echo -n "ALLOW_ALL_UID=" >> ${home_path}/.uid
-	if [ -f ${PACKAGES} ]
-	then
-		for PACKAGE in ${ALLOW_PACKAGES}
-		do
-			uid=$(awk "/^${PACKAGE} /{print \$2}" ${PACKAGES})
-			if [ ! -z ${uid} ]
-			then
-				echo -n "${uid} " >> ${home_path}/.uid
-			fi
-		done
-	fi
-	echo -n "${ALLOW_ALL_UID} " >> ${home_path}/.uid
-	echo -e -n "\nALLOW_UDP_UID=" >> ${home_path}/.uid
-	if [ -f ${PACKAGES} ]
-	then
-		for PACKAGE in ${ALLOW_UDP_PACKAGES}
-		do
-			uid=$(awk "/^${PACKAGE} /{print \$2}" ${PACKAGES})
-			if [ ! -z ${uid} ]
-			then
-				echo -n "${uid} " >> ${home_path}/.uid
-			fi
-		done
-	fi
-	echo -n "${ALLOW_UDP_UID} " >> ${home_path}/.uid
+	find_uid "${ALLOW_PACKAGES}" "${ALLOW_ALL_UID}"
+	echo -n "ALLOW_UDP_UID=" >> ${home_path}/.uid
+	find_uid "${ALLOW_UDP_PACKAGES}" "${ALLOW_UDP_UID}"
 
 	# Saving configuration
-	echo -e -n '\n' >> ${home_path}/.uid
 	echo "SERVER_ADDR=${SERVER_ADDR}" >> ${home_path}/.uid
 	echo "ALLOW_IP=${ALLOW_IP}" >> ${home_path}/.uid
 	echo "ALLOW_IPv6=${ALLOW_IPv6}" >> ${home_path}/.uid
@@ -139,6 +115,22 @@ generate_uid()
 	echo "WAIT_TIME=${WAIT_TIME}" >> ${home_path}/.uid
 }
 
+find_uid()
+{
+	if [ -f ${PACKAGES} ]
+	then
+		for PACKAGE in ${1}
+		do
+			uid=$(awk "/^${PACKAGE} /{print \$2}" ${PACKAGES})
+			if [ ! -z ${uid} ] && ! $(echo "${2}" | grep -q ${uid})
+			then
+				echo -n "${uid} " >> ${home_path}/.uid
+			fi
+		done
+	fi
+	echo "${2} " >> ${home_path}/.uid
+}
+
 create_tun()
 {
 	if [ -c /dev/tun ]
@@ -161,37 +153,37 @@ find_configuration()
 
 load_configuration()
 {
-	SERVER_ADDR=$(find_configuration SERVER_ADDR)
-	ALLOW_IP=$(find_configuration ALLOW_IP)
-	ALLOW_IPv6=$(find_configuration ALLOW_IPv6)
-	LOCAL_IPv6=$(find_configuration LOCAL_IPv6)
-	ENABLE_IPv6=$(find_configuration ENABLE_IPv6)
-	PACKAGES=$(find_configuration PACKAGES)
-	ALLOW_PACKAGES=$(find_configuration ALLOW_PACKAGES)
-	ALLOW_UDP_PACKAGES=$(find_configuration ALLOW_UDP_PACKAGES)
-	ALLOW_ALL_UID=$(find_configuration ALLOW_ALL_UID)
-	ALLOW_UDP_UID=$(find_configuration ALLOW_UDP_UID)
-	ALLOW_LOCAL_DNS=$(find_configuration ALLOW_LOCAL_DNS)
-	ALLOW_REMOTE_DNS=$(find_configuration ALLOW_REMOTE_DNS)
-	ALLOW_LOCAL_UDP=$(find_configuration ALLOW_LOCAL_UDP)
-	ALLOW_LOCAL_TCP=$(find_configuration ALLOW_LOCAL_TCP)
-	ALLOW_REMOTE_UDP=$(find_configuration ALLOW_REMOTE_UDP)
-	ALLOW_REMOTE_TCP=$(find_configuration ALLOW_REMOTE_TCP)
-	ALLOW_LOOKUP=$(find_configuration ALLOW_LOOKUP)
-	ALLOW_UID=$(find_configuration ALLOW_UID)
-	ALLOW_PORT=$(find_configuration ALLOW_PORT)
-	TCP_PORT=$(find_configuration TCP_PORT)
-	MARK=$(find_configuration MARK)
-	TUNDEV=$(find_configuration TUNDEV)
-	TABLE=$(find_configuration TABLE)
-	PREF=$(find_configuration PREF)
-	TUN_ADDR=$(find_configuration TUN_ADDR)
-	WAIT_TIME=$(find_configuration WAIT_TIME)
+	SERVER_ADDR="$(find_configuration SERVER_ADDR)"
+	ALLOW_IP="$(find_configuration ALLOW_IP)"
+	ALLOW_IPv6="$(find_configuration ALLOW_IPv6)"
+	LOCAL_IPv6="$(find_configuration LOCAL_IPv6)"
+	ENABLE_IPv6="$(find_configuration ENABLE_IPv6)"
+	PACKAGES="$(find_configuration PACKAGES)"
+	ALLOW_PACKAGES="$(find_configuration ALLOW_PACKAGES)"
+	ALLOW_UDP_PACKAGES="$(find_configuration ALLOW_UDP_PACKAGES)"
+	ALLOW_ALL_UID="$(find_configuration ALLOW_ALL_UID)"
+	ALLOW_UDP_UID="$(find_configuration ALLOW_UDP_UID)"
+	ALLOW_LOCAL_DNS="$(find_configuration ALLOW_LOCAL_DNS)"
+	ALLOW_REMOTE_DNS="$(find_configuration ALLOW_REMOTE_DNS)"
+	ALLOW_LOCAL_UDP="$(find_configuration ALLOW_LOCAL_UDP)"
+	ALLOW_LOCAL_TCP="$(find_configuration ALLOW_LOCAL_TCP)"
+	ALLOW_REMOTE_UDP="$(find_configuration ALLOW_REMOTE_UDP)"
+	ALLOW_REMOTE_TCP="$(find_configuration ALLOW_REMOTE_TCP)"
+	ALLOW_LOOKUP="$(find_configuration ALLOW_LOOKUP)"
+	ALLOW_UID="$(find_configuration ALLOW_UID)"
+	ALLOW_PORT="$(find_configuration ALLOW_PORT)"
+	TCP_PORT="$(find_configuration TCP_PORT)"
+	MARK="$(find_configuration MARK)"
+	TUNDEV="$(find_configuration TUNDEV)"
+	TABLE="$(find_configuration TABLE)"
+	PREF="$(find_configuration PREF)"
+	TUN_ADDR="$(find_configuration TUN_ADDR)"
+	WAIT_TIME="$(find_configuration WAIT_TIME)"
 }
 
 allow_app_network()
 {
-	for UID in $(find_configuration uid)
+	for UID in "$(find_configuration uid)"
 	do
 		iptables -t ${1} ${2} OUTPUT ${3} \
 			-w ${WAIT_TIME} \
@@ -199,7 +191,7 @@ allow_app_network()
 			--uid ${UID} \
 			-j ACCEPT
 	done
-	for UID in $(find_configuration udp_uid)
+	for UID in "$(find_configuration udp_uid)"
 	do
 		iptables -t ${1} ${2} OUTPUT ${3} \
 			-w ${WAIT_TIME} \
@@ -588,8 +580,12 @@ xray_open() {
 
 	if [ ${ENABLE_IPv6} == 1 ]
 	then
-		LOCAL_IPv6="$(curl -6s http://6.ipw.cn)/128"
-		[ ${LOCAL_IPv6} == '/128' ] && LOCAL_IPv6='' && echo 'Refresh failed.'
+		LOCAL_IPv6="$(curl --connect-timeout 3 -6s http://6.ipw.cn)/128"
+		if [ ${LOCAL_IPv6} == '/128' ]
+		then
+			LOCAL_IPv6=''
+			echo 'Refresh failed.'
+		fi
 	fi
 
 	generate_uid
@@ -639,6 +635,7 @@ tiny_open() {
 
 	create_tun
 
+	ip -6 rule add unreachable pref ${PREF}
 	${home_path}/thread_socket \
 		-p ${TCP_PORT} \
 		-u ${ALLOW_UID} \
@@ -660,6 +657,7 @@ tiny_close() {
 
 	load_configuration
 
+	ip -6 rule del pref ${PREF}
 	killall thread_socket
 
 	tiny_rule_1 -D
@@ -739,12 +737,12 @@ then
 				fi
 				;;
 			'x')
-				if [ 'r' == "${2}" ]
+				if [ 'xray' == ${status} ]
 				then
 					load_configuration
-					origin_LOCAL_IPv6=${LOCAL_IPv6}
-					if [ 1 == ${ENABLE_IPv6} ]
+					if [ 'r' == "${2}" ] && [ ${ENABLE_IPv6} == 1 ]
 					then
+						origin_LOCAL_IPv6=${LOCAL_IPv6}
 						ip46tables -t mangle \
 							-D PREROUTING \
 							-w 2 -p tcp -j XRAY
@@ -754,33 +752,41 @@ then
 							-p tcp \
 							-m owner ! --gid ${GID} -j XRAY_MASK
 
-						LOCAL_IPv6="$(curl -6s http://6.ipw.cn)/128"
-						[ ${LOCAL_IPv6} == '/128' ] && LOCAL_IPv6='' && echo 'Refresh failed.'
-						ip6tables -t mangle \
-							-D PREROUTING -d ${origin_LOCAL_IPv6} -j ACCEPT 2> /dev/null
-						ip6tables -t mangle \
-							-I PREROUTING -d ${LOCAL_IPv6} -j ACCEPT 2> /dev/null
+						LOCAL_IPv6="$(curl --connect-timeout 3 -6s http://6.ipw.cn)/128"
+						if [ ${LOCAL_IPv6} != '/128' ]
+						then
+							ip6tables -t mangle \
+								-D PREROUTING \
+								-d ${origin_LOCAL_IPv6} \
+								-j ACCEPT 2> /dev/null
+							ip6tables -t mangle \
+								-I PREROUTING \
+								-d ${LOCAL_IPv6} \
+								-j ACCEPT 2> /dev/null
+							echo "Refresh IPv6!"
+						else
+							echo 'Refresh failed.'
+						fi
+
 						ip46tables -t mangle \
-							-A PREROUTING -w 2 -p tcp -j XRAY
+							-A PREROUTING \
+							-w 2 -p tcp -j XRAY
 						ip46tables -t mangle \
 							-A OUTPUT \
 							-w 2 \
 							-p tcp \
 							-m owner ! --gid ${GID} -j XRAY_MASK
-						ALLOW_ALL_UID=''
-						ALLOW_UDP_UID=''
 						generate_uid
-						echo "Refresh IPv6!"
+						exit 0
 					fi
-					exit 0
-				fi
-				if [ 'xray' == ${status} ]
-				then
 					xray_close
 					exit 0
 				else
-					close
-					xray_open
+					if [ 'r' != "${2}" ]
+					then
+						close
+						xray_open
+					fi
 				fi
 				;;
 			's')
