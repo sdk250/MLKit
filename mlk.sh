@@ -571,13 +571,6 @@ v2ray_close() {
 }
 
 xray_open() {
-	which busybox &> /dev/null
-	if [ 0 != $? ]
-	then
-		echo 'Your system is not supported busybox!'
-		exit 2
-	fi
-
 	if [ ${ENABLE_IPv6} == 1 ]
 	then
 		LOCAL_IPv6="$(curl --connect-timeout 3 -6s http://6.ipw.cn)/128"
@@ -591,8 +584,8 @@ xray_open() {
 	generate_uid
 	load_configuration
 
-	busybox nohup \
-		busybox setuidgid 0:${GID} \
+	${home_path}/busybox nohup \
+		${home_path}/busybox setuidgid 0:${GID} \
 		${home_path}/xray run \
 		-c ${home_path}/config.json 2>&1 > ${home_path}/xray.log &
 	${home_path}/thread_socket \
