@@ -183,7 +183,7 @@ load_configuration()
 
 allow_app_network()
 {
-	for UID in "$(find_configuration uid)"
+	for UID in $(find_configuration uid)
 	do
 		iptables -t ${1} ${2} OUTPUT ${3} \
 			-w ${WAIT_TIME} \
@@ -191,7 +191,7 @@ allow_app_network()
 			--uid ${UID} \
 			-j ACCEPT
 	done
-	for UID in "$(find_configuration udp_uid)"
+    for UID in $(find_configuration udp_uid)
 	do
 		iptables -t ${1} ${2} OUTPUT ${3} \
 			-w ${WAIT_TIME} \
