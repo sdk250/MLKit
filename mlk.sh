@@ -191,7 +191,7 @@ allow_app_network()
 			--uid ${UID} \
 			-j ACCEPT
 	done
-    for UID in $(find_configuration udp_uid)
+	for UID in $(find_configuration udp_uid)
 	do
 		iptables -t ${1} ${2} OUTPUT ${3} \
 			-w ${WAIT_TIME} \
@@ -295,6 +295,9 @@ xray_rule()
 			# -o ${LOOKUP} \
 			# -j ACCEPT
 	# done
+	# ip46tables -t mangle -${2} OUTPUT \
+		# -o wlan+ \
+		# -j ACCEPT
 	for UID in ${ALLOW_ALL_UID}
 	do
 		[ -z ${UID} ] || \
@@ -772,7 +775,7 @@ then
 						generate_uid
 						exit 0
 					fi
-					xray_close
+					[ "${2}" != 'r' ] && xray_close
 					exit 0
 				else
 					if [ 'r' != "${2}" ]
