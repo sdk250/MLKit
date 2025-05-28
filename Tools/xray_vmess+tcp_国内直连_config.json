@@ -1,0 +1,139 @@
+{
+  "log": {
+    "access": "none",
+    "error": "none",
+    "level": "none",
+    "dnsLog": false
+  },
+  "dns": {
+    "hosts": {
+      "sdk250": "127.0.0.1"
+    },
+    "servers": [{
+      "address": "fakedns"
+    }, {
+      "tag": "cn-dns",
+      "address": "223.5.5.5",
+      "port": 53,
+      "domains": ["geosite:cn"]
+    }],
+    "disableCache": false,
+    "tag": "in-dns"
+  },
+  "fakedns": [{
+    "ipPool": "198.18.0.0/15",
+    "poolSize": 65535
+  }, {
+    "ipPool": "fc00::/18",
+    "poolSize": 65535
+  }],
+  "routing": {
+    "domainStrategy": "AsIs",
+    "domainMatcher": "hybrid",
+    "rules": [{
+      "type": "field",
+      "inboundTag": ["cn-dns"],
+      "outboundTag": "out-direct",
+      "ruleTag": "DNS CN - OUT"
+    }, {
+      "type": "field",
+      "port": "53",
+      "inboundTag": ["in-global"],
+      "outboundTag": "out-dns",
+      "ruleTag": "DNS - HOOK"
+    }, {
+      "type": "field",
+      "domain": ["geosite:category-ads-all"],
+      "inboundTag": ["in-global"],
+      "outboundTag": "out-block",
+      "ruleTag": "AD - OUT"
+    }, {
+      "type": "field",
+      "domain": ["geosite:google"],
+      "inboundTag": ["in-global"],
+      "outboundTag": "out-global",
+      "ruleTag": "Google CN SITE - OUT"
+    }, {
+      "type": "field",
+      "ip": ["geoip:cn"],
+      "inboundTag": ["in-global"],
+      "outboundTag": "out-direct",
+      "ruleTag": "CN IP - OUT"
+    }, {
+      "type": "field",
+      "domain": ["geosite:cn"],
+      "inboundTag": ["in-global"],
+      "outboundTag": "out-direct",
+      "ruleTag": "CN SITE - OUT"
+    }]
+  },
+  "policy": {},
+  "inbounds": [{
+    "tag": "in-global",
+    "listen": "::",
+    "port": 20801,
+    "protocol": "dokodemo-door",
+    "settings": {
+      "network": "tcp,udp",
+      "followRedirect": true
+    },
+    "streamSettings": {
+      "sockopt": {
+        "tproxy": "tproxy"
+      }
+    },
+    "sniffing": {
+      "enabled": true,
+      "destOverride": ["fakedns"],
+      "metadataOnly": true,
+      "routeOnly": true
+    }
+  }],
+  "outbounds": [{
+    "tag": "out-global",
+    "protocol": "vmess",
+    "settings": {
+      "vnext": [{
+        "address": "127.0.0.1",
+        "port": 80,
+        "users": [{
+          "id": "2f1ebedb-8936-473b-9dbb-8144fbf70e97",
+          "security": "auto"
+        }]
+      }]
+    },
+    "streamSettings": {
+      "network": "raw",
+      "rawSettings": {
+        "header": {
+          "type": "http",
+          "request": {
+            "method": "GET",
+            "version": "1.1",
+            "path": "/",
+            "host": "dm.toutiao.com"
+          }
+        }
+      },
+      "security": "none"
+    }
+  }, {
+    "tag": "out-bd",
+    "protocol": "http",
+    "settings": {
+      "servers": [{
+        "address": "127.0.0.1",
+        "port": 20802
+      }]
+    }
+  }, {
+    "tag": "out-dns",
+    "protocol": "dns"
+  }, {
+    "tag": "out-direct",
+    "protocol": "freedom"
+  }, {
+    "tag": "out-block",
+    "protocol": "blackhole"
+  }]
+}
