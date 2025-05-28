@@ -239,6 +239,21 @@ ip46tables()
 	[ ${ENABLE_IPv6} == 1 ] && ip6tables ${@}
 }
 
+xray_subrule()
+{
+	for PROTO in tcp udp
+	do
+		ip6tables -t mangle -${1} XRAY \
+			-p ${PROTO} \
+			! --dport 53 \
+			-d ${2} -j RETURN
+		ip6tables -t mangle -${1} XRAY_MASK \
+			-p ${PROTO} \
+			! --dport 53 \
+			-d ${2} -j RETURN
+	done
+}
+
 xray_rule()
 {
 	ip rule ${1} fwmark ${MARK} lookup ${TABLE} pref ${PREF}
@@ -252,11 +267,11 @@ xray_rule()
 		do
 			iptables -t mangle -${2} XRAY \
 				-p ${PROTO} \
-				-m multiport ! --dports 53,853 \
+				! --dport 53 \
 				-d ${IP} -j RETURN
 			iptables -t mangle -${2} XRAY_MASK \
 				-p ${PROTO} \
-				-m multiport ! --dports 53,853 \
+				! --dport 53 \
 				-d ${IP} -j RETURN
 		done
 	done
@@ -266,21 +281,9 @@ xray_rule()
 		ip -6 rule ${1} fwmark ${MARK} lookup ${TABLE} pref ${PREF}
 		ip -6 route ${1} local default dev lo table ${TABLE}
 
-		ip6tables -t mangle -${2} PREROUTING -d ${LOCAL_IPv6} -j ACCEPT 2> /dev/null
-
-		for IP in ${ALLOW_IPv6}
+		for IP in ${ALLOW_IPv6} ${LOCAL_IPv6}
 		do
-			for PROTO in tcp udp
-			do
-				ip6tables -t mangle -${2} XRAY \
-					-p ${PROTO} \
-					-m multiport ! --dports 53,853 \
-					-d ${IP} -j RETURN
-				ip6tables -t mangle -${2} XRAY_MASK \
-					-p ${PROTO} \
-					-m multiport ! --dports 53,853 \
-					-d ${IP} -j RETURN
-			done
+			xray_subrule ${2} ${IP}
 		done
 
 		# ip6tables -t mangle -${2} PREROUTING -s fe80::/64 -j DROP
@@ -314,14 +317,14 @@ xray_rule()
 	[ ${ALLOW_REMOTE_UDP} == 1 ] && iptables -t mangle -${2} PREROUTING \
 		-s 192.168/16 \
 		-p udp \
-		-m multiport ! --dports 53,853 \
+		! --dport 53 \
 		-j ACCEPT
 	[ ${ALLOW_REMOTE_UDP} == 1 ] && [ ${ENABLE_IPv6} == 1 ] && ip6tables \
 		-t mangle \
 		-${2} PREROUTING \
 		-s fe80::/64 \
 		-p udp \
-		-m multiport ! --dports 53,853 \
+		! --dport 53 \
 		-j ACCEPT
 	for PROTO in tcp udp
 	do
@@ -576,12 +579,13 @@ v2ray_close() {
 xray_open() {
 	if [ ${ENABLE_IPv6} == 1 ]
 	then
-		LOCAL_IPv6="$(curl --connect-timeout 3 -6s http://6.ipw.cn)/128"
-		if [ ${LOCAL_IPv6} == '/128' ]
-		then
-			LOCAL_IPv6=''
-			echo 'Refresh failed.'
-		fi
+		for IP in $(ip -6 addr | grep inet | awk '{print $2}' | grep '^2')
+		do
+			if [ ! -z "${IP}" ]
+			then
+				LOCAL_IPv6="${LOCAL_IPv6} ${IP%/*}/128"
+			fi
+		done
 	fi
 
 	generate_uid
@@ -748,17 +752,27 @@ then
 							-p tcp \
 							-m owner ! --gid ${GID} -j XRAY_MASK
 
-						LOCAL_IPv6="$(curl --connect-timeout 3 -6s http://6.ipw.cn)/128"
-						if [ ${LOCAL_IPv6} != '/128' ]
+						LOCAL_IPv6=''
+						for IP in $(ip -6 addr | grep inet | awk '{print $2}' | grep '^2')
+						do
+							if [ ! -z ${IP} ]
+							then
+								LOCAL_IPv6="${LOCAL_IPv6} ${IP%/*}/128"
+							fi
+						done
+						if [ ! -z "${origin_LOCAL_IPv6}" ]
 						then
-							ip6tables -t mangle \
-								-D PREROUTING \
-								-d ${origin_LOCAL_IPv6} \
-								-j ACCEPT 2> /dev/null
-							ip6tables -t mangle \
-								-I PREROUTING \
-								-d ${LOCAL_IPv6} \
-								-j ACCEPT 2> /dev/null
+							for IP in ${origin_LOCAL_IPv6}
+							do
+								xray_subrule D ${IP}
+							done
+						fi
+						if [ ! -z "${LOCAL_IPv6}" ]
+						then
+							for IP in ${LOCAL_IPv6}
+							do
+								xray_subrule A ${IP}
+							done
 							echo "Refresh IPv6!"
 						else
 							echo 'Refresh failed.'
