@@ -239,55 +239,56 @@ ip46tables()
 	[ ${ENABLE_IPv6} == 1 ] && ip6tables ${@}
 }
 
+ip46route()
+{
+	ip -4 route ${@}
+	[ ${ENABLE_IPv6} == 1 ] && ip -6 route ${@}
+}
+
+ip46rule()
+{
+	ip -4 rule ${@}
+	[ ${ENABLE_IPv6} == 1 ] && ip -6 rule ${@}
+}
+
 xray_subrule()
 {
-	for PROTO in tcp udp
-	do
-		ip6tables -t mangle -${1} XRAY \
-			-p ${PROTO} \
-			! --dport 53 \
-			-d ${2} -j RETURN
-		ip6tables -t mangle -${1} XRAY_MASK \
-			-p ${PROTO} \
-			! --dport 53 \
-			-d ${2} -j RETURN
-	done
+	ip6tables -t mangle -${1} XRAY \
+		-d ${2} -j RETURN
+	ip6tables -t mangle -${1} XRAY_MASK \
+		-d ${2} -j RETURN
 }
 
 xray_rule()
 {
-	ip rule ${1} fwmark ${MARK} lookup ${TABLE} pref ${PREF}
-	ip route ${1} local default dev lo table ${TABLE}
+	ip46rule ${1} fwmark ${MARK} lookup ${TABLE} pref ${PREF}
+	ip46route ${1} local default dev lo table ${TABLE}
 
 	ip46tables -t mangle -${2} PREROUTING -p udp --dport 67:68 -j ACCEPT
+	for PROTO in tcp udp
+	do
+		ip46tables -t mangle -${2} PREROUTING \
+			-p ${PROTO} --dport 53 \
+			-j TPROXY --on-port 20801 --tproxy-mark ${MARK}
+		ip46tables -t mangle -${2} XRAY_MASK \
+			-p ${PROTO} --dport 53 \
+			-j MARK --set-mark ${MARK}
+	done
 
 	for IP in ${ALLOW_IP}
 	do
-		for PROTO in tcp udp
-		do
-			iptables -t mangle -${2} XRAY \
-				-p ${PROTO} \
-				! --dport 53 \
-				-d ${IP} -j RETURN
-			iptables -t mangle -${2} XRAY_MASK \
-				-p ${PROTO} \
-				! --dport 53 \
-				-d ${IP} -j RETURN
-		done
+		iptables -t mangle -${2} XRAY \
+			-d ${IP} -j RETURN
+		iptables -t mangle -${2} XRAY_MASK \
+			-d ${IP} -j RETURN
 	done
 
 	if [ ${ENABLE_IPv6} == 1 ]
 	then
-		ip -6 rule ${1} fwmark ${MARK} lookup ${TABLE} pref ${PREF}
-		ip -6 route ${1} local default dev lo table ${TABLE}
-
 		for IP in ${ALLOW_IPv6} ${LOCAL_IPv6}
 		do
 			xray_subrule ${2} ${IP}
 		done
-
-		# ip6tables -t mangle -${2} PREROUTING -s fe80::/64 -j DROP
-		# ip6tables -t mangle -${2} PREROUTING -d fe80::/64 -j DROP
 	fi
 
 	# for LOOKUP in ${ALLOW_LOOKUP}
@@ -326,16 +327,13 @@ xray_rule()
 		-p udp \
 		! --dport 53 \
 		-j ACCEPT
+
 	for PROTO in tcp udp
 	do
-		iptables -t mangle -${2} XRAY \
+		ip46tables -t mangle -${2} XRAY \
 			-p ${PROTO} \
 			-j TPROXY \
-			--on-ip 127.0.0.1 --on-port 20801 --tproxy-mark ${MARK}
-		[ ${ENABLE_IPv6} == 1 ] && ip6tables -t mangle -${2} XRAY \
-			-p ${PROTO} \
-			-j TPROXY \
-			--on-ip ::1 --on-port 20801 --tproxy-mark ${MARK}
+			--on-port 20801 --tproxy-mark ${MARK}
 
 		ip46tables -t mangle -${2} XRAY_MASK -p ${PROTO} \
 			-j MARK --set-mark ${MARK}
@@ -583,7 +581,7 @@ xray_open() {
 		do
 			if [ ! -z "${IP}" ]
 			then
-				LOCAL_IPv6="${LOCAL_IPv6} ${IP%/*}/128"
+				LOCAL_IPv6="${LOCAL_IPv6} ${IP}"
 			fi
 		done
 	fi
@@ -757,7 +755,7 @@ then
 						do
 							if [ ! -z ${IP} ]
 							then
-								LOCAL_IPv6="${LOCAL_IPv6} ${IP%/*}/128"
+								LOCAL_IPv6="${LOCAL_IPv6} ${IP}"
 							fi
 						done
 						if [ ! -z "${origin_LOCAL_IPv6}" ]
