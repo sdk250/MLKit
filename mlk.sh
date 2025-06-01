@@ -8,15 +8,15 @@ SERVER_ADDR='110.242.70.68'
 
 # Allow IP
 ALLOW_IP="127.0.0.1/32 \
-	10.0.0.0/8 \
-	172.16.0.0/12 \
-	169.254.0.0/16 \
-	224.0.0.0/4 \
-	192.168.0.0/16 \
-	100.64.0.0/10 \
-	240.0.0.0/4 \
-	255.255.255.255/32 \
-	${SERVER_ADDR}/32"
+  10.0.0.0/8 \
+  172.16.0.0/12 \
+  169.254.0.0/16 \
+  224.0.0.0/4 \
+  192.168.0.0/16 \
+  100.64.0.0/10 \
+  240.0.0.0/4 \
+  255.255.255.255/32 \
+  ${SERVER_ADDR}/32"
 
 ALLOW_IPv6="fe80::/64"
 
@@ -29,14 +29,14 @@ PACKAGES="/data/system/packages.list"
 
 # 在 Android 系统中的需要放行的应用的包名
 ALLOW_PACKAGES="com.android.bankabc \
-	com.nasoft.socmark \
-	com.v2ray.ang \
-	com.tmri.app.main"
+  com.nasoft.socmark \
+  com.v2ray.ang \
+  com.tmri.app.main"
 
 # 同上，不过是针对放行UDP
 ALLOW_UDP_PACKAGES="com.tencent.tmgp.pubgmhd \
-	com.tencent.tmgp.sgame \
-	com.miHoYo.Yuanshen"
+  com.tencent.tmgp.sgame \
+  com.miHoYo.Yuanshen"
 
 # 适用于 Linux，需要放行的UID
 ALLOW_ALL_UID=''
@@ -80,600 +80,600 @@ WAIT_TIME=3
 
 generate_uid()
 {
-	echo -e "# This file is automatical" \
-	"genrated by \`mlk\`\n# DO NOT edit it\n" > ${home_path}/.uid
+  echo -e "# This file is automatical" \
+  "genrated by \`mlk\`\n# DO NOT edit it\n" > ${home_path}/.uid
 
-	echo -n "ALLOW_ALL_UID=" >> ${home_path}/.uid
-	find_uid "${ALLOW_PACKAGES}" "${ALLOW_ALL_UID}"
-	echo -n "ALLOW_UDP_UID=" >> ${home_path}/.uid
-	find_uid "${ALLOW_UDP_PACKAGES}" "${ALLOW_UDP_UID}"
+  echo -n "ALLOW_ALL_UID=" >> ${home_path}/.uid
+  find_uid "${ALLOW_PACKAGES}" "${ALLOW_ALL_UID}"
+  echo -n "ALLOW_UDP_UID=" >> ${home_path}/.uid
+  find_uid "${ALLOW_UDP_PACKAGES}" "${ALLOW_UDP_UID}"
 
-	# Saving configuration
-	echo "SERVER_ADDR=${SERVER_ADDR}" >> ${home_path}/.uid
-	echo "ALLOW_IP=${ALLOW_IP}" >> ${home_path}/.uid
-	echo "ALLOW_IPv6=${ALLOW_IPv6}" >> ${home_path}/.uid
-	echo "LOCAL_IPv6=${LOCAL_IPv6}" >> ${home_path}/.uid
-	echo "ENABLE_IPv6=${ENABLE_IPv6}" >> ${home_path}/.uid
-	echo "PACKAGES=${PACKAGES}" >> ${home_path}/.uid
-	echo "ALLOW_PACKAGES=${ALLOW_PACKAGES}" >> ${home_path}/.uid
-	echo "ALLOW_UDP_PACKAGES=${ALLOW_UDP_PACKAGES}" >> ${home_path}/.uid
-	echo "ALLOW_LOCAL_DNS=${ALLOW_LOCAL_DNS}" >> ${home_path}/.uid
-	echo "ALLOW_REMOTE_DNS=${ALLOW_REMOTE_DNS}" >> ${home_path}/.uid
-	echo "ALLOW_LOCAL_UDP=${ALLOW_LOCAL_UDP}" >> ${home_path}/.uid
-	echo "ALLOW_LOCAL_TCP=${ALLOW_LOCAL_TCP}" >> ${home_path}/.uid
-	echo "ALLOW_REMOTE_UDP=${ALLOW_REMOTE_UDP}" >> ${home_path}/.uid
-	echo "ALLOW_REMOTE_TCP=${ALLOW_REMOTE_TCP}" >> ${home_path}/.uid
-	echo "ALLOW_LOOKUP=${ALLOW_LOOKUP}" >> ${home_path}/.uid
-	echo "ALLOW_UID=${ALLOW_UID}" >> ${home_path}/.uid
-	echo "ALLOW_PORT=${ALLOW_PORT}" >> ${home_path}/.uid
-	echo "TCP_PORT=${TCP_PORT}" >> ${home_path}/.uid
-	echo "MARK=${MARK}" >> ${home_path}/.uid
-	echo "TUNDEV=${TUNDEV}" >> ${home_path}/.uid
-	echo "TABLE=${TABLE}" >> ${home_path}/.uid
-	echo "PREF=${PREF}" >> ${home_path}/.uid
-	echo "TUN_ADDR=${TUN_ADDR}" >> ${home_path}/.uid
-	echo "WAIT_TIME=${WAIT_TIME}" >> ${home_path}/.uid
+  # Saving configuration
+  echo "SERVER_ADDR=${SERVER_ADDR}" >> ${home_path}/.uid
+  echo "ALLOW_IP=${ALLOW_IP}" >> ${home_path}/.uid
+  echo "ALLOW_IPv6=${ALLOW_IPv6}" >> ${home_path}/.uid
+  echo "LOCAL_IPv6=${LOCAL_IPv6}" >> ${home_path}/.uid
+  echo "ENABLE_IPv6=${ENABLE_IPv6}" >> ${home_path}/.uid
+  echo "PACKAGES=${PACKAGES}" >> ${home_path}/.uid
+  echo "ALLOW_PACKAGES=${ALLOW_PACKAGES}" >> ${home_path}/.uid
+  echo "ALLOW_UDP_PACKAGES=${ALLOW_UDP_PACKAGES}" >> ${home_path}/.uid
+  echo "ALLOW_LOCAL_DNS=${ALLOW_LOCAL_DNS}" >> ${home_path}/.uid
+  echo "ALLOW_REMOTE_DNS=${ALLOW_REMOTE_DNS}" >> ${home_path}/.uid
+  echo "ALLOW_LOCAL_UDP=${ALLOW_LOCAL_UDP}" >> ${home_path}/.uid
+  echo "ALLOW_LOCAL_TCP=${ALLOW_LOCAL_TCP}" >> ${home_path}/.uid
+  echo "ALLOW_REMOTE_UDP=${ALLOW_REMOTE_UDP}" >> ${home_path}/.uid
+  echo "ALLOW_REMOTE_TCP=${ALLOW_REMOTE_TCP}" >> ${home_path}/.uid
+  echo "ALLOW_LOOKUP=${ALLOW_LOOKUP}" >> ${home_path}/.uid
+  echo "ALLOW_UID=${ALLOW_UID}" >> ${home_path}/.uid
+  echo "ALLOW_PORT=${ALLOW_PORT}" >> ${home_path}/.uid
+  echo "TCP_PORT=${TCP_PORT}" >> ${home_path}/.uid
+  echo "MARK=${MARK}" >> ${home_path}/.uid
+  echo "TUNDEV=${TUNDEV}" >> ${home_path}/.uid
+  echo "TABLE=${TABLE}" >> ${home_path}/.uid
+  echo "PREF=${PREF}" >> ${home_path}/.uid
+  echo "TUN_ADDR=${TUN_ADDR}" >> ${home_path}/.uid
+  echo "WAIT_TIME=${WAIT_TIME}" >> ${home_path}/.uid
 }
 
 find_uid()
 {
-	if [ -f ${PACKAGES} ]
-	then
-		for PACKAGE in ${1}
-		do
-			uid=$(awk "/^${PACKAGE} /{print \$2}" ${PACKAGES})
-			if [ ! -z ${uid} ] && ! $(echo "${2}" | grep -q ${uid})
-			then
-				echo -n "${uid} " >> ${home_path}/.uid
-			fi
-		done
-	fi
-	echo "${2} " >> ${home_path}/.uid
+  if [ -f ${PACKAGES} ]
+  then
+    for PACKAGE in ${1}
+    do
+      uid=$(awk "/^${PACKAGE} /{print \$2}" ${PACKAGES})
+      if [ ! -z ${uid} ] && ! $(echo "${2}" | grep -q ${uid})
+      then
+        echo -n "${uid} " >> ${home_path}/.uid
+      fi
+    done
+  fi
+  echo "${2} " >> ${home_path}/.uid
 }
 
 create_tun()
 {
-	if [ -c /dev/tun ]
-	then
-		[ -f /dev/net/tun ] || ( mkdir -p /dev/net \
-			&& ln -sf /dev/tun /dev/net/tun )
-	else
-		[ -c /dev/net/tun ] || ( mkdir -p /dev/net \
-			&& mknod /dev/net/tun c 10 200 \
-			&& chmod 600 /dev/net/tun )
-	fi
+  if [ -c /dev/tun ]
+  then
+    [ -f /dev/net/tun ] || ( mkdir -p /dev/net \
+      && ln -sf /dev/tun /dev/net/tun )
+  else
+    [ -c /dev/net/tun ] || ( mkdir -p /dev/net \
+      && mknod /dev/net/tun c 10 200 \
+      && chmod 600 /dev/net/tun )
+  fi
 }
 
 find_configuration()
 {
-	echo $(grep -E '^[^#]' ${home_path}/.uid | \
-		grep -E "^${1}=" | awk -F= '{print $2}' \
-	)
+  echo $(grep -E '^[^#]' ${home_path}/.uid | \
+    grep -E "^${1}=" | awk -F= '{print $2}' \
+  )
 }
 
 load_configuration()
 {
-	SERVER_ADDR="$(find_configuration SERVER_ADDR)"
-	ALLOW_IP="$(find_configuration ALLOW_IP)"
-	ALLOW_IPv6="$(find_configuration ALLOW_IPv6)"
-	LOCAL_IPv6="$(find_configuration LOCAL_IPv6)"
-	ENABLE_IPv6="$(find_configuration ENABLE_IPv6)"
-	PACKAGES="$(find_configuration PACKAGES)"
-	ALLOW_PACKAGES="$(find_configuration ALLOW_PACKAGES)"
-	ALLOW_UDP_PACKAGES="$(find_configuration ALLOW_UDP_PACKAGES)"
-	ALLOW_ALL_UID="$(find_configuration ALLOW_ALL_UID)"
-	ALLOW_UDP_UID="$(find_configuration ALLOW_UDP_UID)"
-	ALLOW_LOCAL_DNS="$(find_configuration ALLOW_LOCAL_DNS)"
-	ALLOW_REMOTE_DNS="$(find_configuration ALLOW_REMOTE_DNS)"
-	ALLOW_LOCAL_UDP="$(find_configuration ALLOW_LOCAL_UDP)"
-	ALLOW_LOCAL_TCP="$(find_configuration ALLOW_LOCAL_TCP)"
-	ALLOW_REMOTE_UDP="$(find_configuration ALLOW_REMOTE_UDP)"
-	ALLOW_REMOTE_TCP="$(find_configuration ALLOW_REMOTE_TCP)"
-	ALLOW_LOOKUP="$(find_configuration ALLOW_LOOKUP)"
-	ALLOW_UID="$(find_configuration ALLOW_UID)"
-	ALLOW_PORT="$(find_configuration ALLOW_PORT)"
-	TCP_PORT="$(find_configuration TCP_PORT)"
-	MARK="$(find_configuration MARK)"
-	TUNDEV="$(find_configuration TUNDEV)"
-	TABLE="$(find_configuration TABLE)"
-	PREF="$(find_configuration PREF)"
-	TUN_ADDR="$(find_configuration TUN_ADDR)"
-	WAIT_TIME="$(find_configuration WAIT_TIME)"
+  SERVER_ADDR="$(find_configuration SERVER_ADDR)"
+  ALLOW_IP="$(find_configuration ALLOW_IP)"
+  ALLOW_IPv6="$(find_configuration ALLOW_IPv6)"
+  LOCAL_IPv6="$(find_configuration LOCAL_IPv6)"
+  ENABLE_IPv6="$(find_configuration ENABLE_IPv6)"
+  PACKAGES="$(find_configuration PACKAGES)"
+  ALLOW_PACKAGES="$(find_configuration ALLOW_PACKAGES)"
+  ALLOW_UDP_PACKAGES="$(find_configuration ALLOW_UDP_PACKAGES)"
+  ALLOW_ALL_UID="$(find_configuration ALLOW_ALL_UID)"
+  ALLOW_UDP_UID="$(find_configuration ALLOW_UDP_UID)"
+  ALLOW_LOCAL_DNS="$(find_configuration ALLOW_LOCAL_DNS)"
+  ALLOW_REMOTE_DNS="$(find_configuration ALLOW_REMOTE_DNS)"
+  ALLOW_LOCAL_UDP="$(find_configuration ALLOW_LOCAL_UDP)"
+  ALLOW_LOCAL_TCP="$(find_configuration ALLOW_LOCAL_TCP)"
+  ALLOW_REMOTE_UDP="$(find_configuration ALLOW_REMOTE_UDP)"
+  ALLOW_REMOTE_TCP="$(find_configuration ALLOW_REMOTE_TCP)"
+  ALLOW_LOOKUP="$(find_configuration ALLOW_LOOKUP)"
+  ALLOW_UID="$(find_configuration ALLOW_UID)"
+  ALLOW_PORT="$(find_configuration ALLOW_PORT)"
+  TCP_PORT="$(find_configuration TCP_PORT)"
+  MARK="$(find_configuration MARK)"
+  TUNDEV="$(find_configuration TUNDEV)"
+  TABLE="$(find_configuration TABLE)"
+  PREF="$(find_configuration PREF)"
+  TUN_ADDR="$(find_configuration TUN_ADDR)"
+  WAIT_TIME="$(find_configuration WAIT_TIME)"
 }
 
 allow_app_network()
 {
-	for UID in $(find_configuration uid)
-	do
-		iptables -t ${1} ${2} OUTPUT ${3} \
-			-w ${WAIT_TIME} \
-			-m owner \
-			--uid ${UID} \
-			-j ACCEPT
-	done
-	for UID in $(find_configuration udp_uid)
-	do
-		iptables -t ${1} ${2} OUTPUT ${3} \
-			-w ${WAIT_TIME} \
-			-p udp \
-			-m owner \
-			--uid ${UID} \
-			-j ACCEPT
-	done
+  for UID in $(find_configuration uid)
+  do
+    iptables -t ${1} ${2} OUTPUT ${3} \
+      -w ${WAIT_TIME} \
+      -m owner \
+      --uid ${UID} \
+      -j ACCEPT
+  done
+  for UID in $(find_configuration udp_uid)
+  do
+    iptables -t ${1} ${2} OUTPUT ${3} \
+      -w ${WAIT_TIME} \
+      -p udp \
+      -m owner \
+      --uid ${UID} \
+      -j ACCEPT
+  done
 }
 
 allow_core()
 {
-	# Allow DHCP service
-	iptables -t ${1} ${2} OUTPUT ${3} \
-		-w ${WAIT_TIME} \
-		-p udp \
-		--dport 67:68 \
-		-j ACCEPT
+  # Allow DHCP service
+  iptables -t ${1} ${2} OUTPUT ${3} \
+    -w ${WAIT_TIME} \
+    -p udp \
+    --dport 67:68 \
+    -j ACCEPT
 
-	for IP in ${ALLOW_IP}
-	do
-		# Allow IP range
-		iptables -t ${1} ${2} PREROUTING ${3} \
-			-w ${WAIT_TIME} \
-			-d ${IP} \
-			-j ACCEPT
-		iptables -t ${1} ${2} OUTPUT ${3} \
-			-w ${WAIT_TIME} \
-			-d ${IP} \
-			-j ACCEPT
-	done
-	for LOOKUP in ${ALLOW_LOOKUP}
-	do
-		# Allow lookup
-		iptables -t ${1} ${2} OUTPUT ${3} \
-			-w ${WAIT_TIME} \
-			-o ${LOOKUP} \
-			-j ACCEPT
-	done
+  for IP in ${ALLOW_IP}
+  do
+    # Allow IP range
+    iptables -t ${1} ${2} PREROUTING ${3} \
+      -w ${WAIT_TIME} \
+      -d ${IP} \
+      -j ACCEPT
+    iptables -t ${1} ${2} OUTPUT ${3} \
+      -w ${WAIT_TIME} \
+      -d ${IP} \
+      -j ACCEPT
+  done
+  for LOOKUP in ${ALLOW_LOOKUP}
+  do
+    # Allow lookup
+    iptables -t ${1} ${2} OUTPUT ${3} \
+      -w ${WAIT_TIME} \
+      -o ${LOOKUP} \
+      -j ACCEPT
+  done
 }
 
 ip46tables()
 {
-	iptables ${@}
-	[ ${ENABLE_IPv6} == 1 ] && ip6tables ${@}
+  iptables ${@}
+  [ ${ENABLE_IPv6} == 1 ] && ip6tables ${@}
 }
 
 ip46route()
 {
-	ip -4 route ${@}
-	[ ${ENABLE_IPv6} == 1 ] && ip -6 route ${@}
+  ip -4 route ${@}
+  [ ${ENABLE_IPv6} == 1 ] && ip -6 route ${@}
 }
 
 ip46rule()
 {
-	ip -4 rule ${@}
-	[ ${ENABLE_IPv6} == 1 ] && ip -6 rule ${@}
+  ip -4 rule ${@}
+  [ ${ENABLE_IPv6} == 1 ] && ip -6 rule ${@}
 }
 
 xray_subrule()
 {
-	ip6tables -t mangle -${1} XRAY \
-		-d ${2} -j RETURN
-	ip6tables -t mangle -${1} XRAY_MASK \
-		-d ${2} -j RETURN
+  ip6tables -t mangle -${1} XRAY \
+    -d ${2} -j RETURN
+  ip6tables -t mangle -${1} XRAY_MASK \
+    -d ${2} -j RETURN
 }
 
 xray_final_rule()
 {
-	for PROTO in tcp udp
-	do
-		ip46tables -t mangle \
-			-${1} PREROUTING \
-			-w 2 \
-			-p ${PROTO} -j XRAY
-		ip46tables -t mangle \
-			-${1} OUTPUT \
-			-w 2 \
-			-p ${PROTO} \
-			-m owner ! --gid ${GID} -j XRAY_MASK
-	done
+  for PROTO in tcp udp
+  do
+    ip46tables -t mangle \
+      -${1} PREROUTING \
+      -w 2 \
+      -p ${PROTO} -j XRAY
+    ip46tables -t mangle \
+      -${1} OUTPUT \
+      -w 2 \
+      -p ${PROTO} \
+      -m owner ! --gid ${GID} -j XRAY_MASK
+  done
 }
 
 xray_rule()
 {
-	ip46rule ${1} fwmark ${MARK} lookup ${TABLE} pref ${PREF}
-	ip46route ${1} local default dev lo table ${TABLE}
+  ip46rule ${1} fwmark ${MARK} lookup ${TABLE} pref ${PREF}
+  ip46route ${1} local default dev lo table ${TABLE}
 
-	ip46tables -t mangle -${2} XRAY \
-		-p udp --dport 67:68 \
-		-j RETURN
+  ip46tables -t mangle -${2} XRAY \
+    -p udp --dport 67:68 \
+    -j RETURN
 
-	[ ${ALLOW_REMOTE_UDP} == 1 ] && \
-		ip46tables -t mangle \
-			-${2} XRAY \
-			-p udp ! --dport 53 \
-			-m mark ! --mark ${MARK} \
-			-j RETURN
-	[ ${ALLOW_LOCAL_UDP} == 1 ] && \
-		ip46tables -t mangle \
-			-${2} XRAY_MASK \
-			-p udp ! --dport 53 \
-			-j RETURN
-	[ ${ALLOW_REMOTE_TCP} == 1 ] && \
-		ip46tables -t mangle \
-			-${2} XRAY \
-			-p tcp \
-			-m mark ! --mark ${MARK} \
-			-j RETURN
-	[ ${ALLOW_LOCAL_TCP} == 1 ] && \
-		ip46tables -t mangle \
-			-${2} XRAY_MASK \
-			-p tcp \
-			-j RETURN
+  [ ${ALLOW_REMOTE_UDP} == 1 ] && \
+    ip46tables -t mangle \
+      -${2} XRAY \
+      -p udp ! --dport 53 \
+      -m mark ! --mark ${MARK} \
+      -j RETURN
+  [ ${ALLOW_LOCAL_UDP} == 1 ] && \
+    ip46tables -t mangle \
+      -${2} XRAY_MASK \
+      -p udp ! --dport 53 \
+      -j RETURN
+  [ ${ALLOW_REMOTE_TCP} == 1 ] && \
+    ip46tables -t mangle \
+      -${2} XRAY \
+      -p tcp \
+      -m mark ! --mark ${MARK} \
+      -j RETURN
+  [ ${ALLOW_LOCAL_TCP} == 1 ] && \
+    ip46tables -t mangle \
+      -${2} XRAY_MASK \
+      -p tcp \
+      -j RETURN
 
-	for PROTO in tcp udp
-	do
-		[ ${ALLOW_REMOTE_DNS} == 1 ] && \
-			ip46tables -t mangle -${2} XRAY \
-				-p ${PROTO} --dport 53 \
-				-m mark ! --mark ${MARK} \
-				-j RETURN
+  for PROTO in tcp udp
+  do
+    [ ${ALLOW_REMOTE_DNS} == 1 ] && \
+      ip46tables -t mangle -${2} XRAY \
+        -p ${PROTO} --dport 53 \
+        -m mark ! --mark ${MARK} \
+        -j RETURN
 
-		[ ${ALLOW_LOCAL_DNS} == 1 ] && \
-			ip46tables -t mangle -${2} XRAY_MASK \
-				-p ${PROTO} --dport 53 \
-				-j RETURN
+    [ ${ALLOW_LOCAL_DNS} == 1 ] && \
+      ip46tables -t mangle -${2} XRAY_MASK \
+        -p ${PROTO} --dport 53 \
+        -j RETURN
 
-		ip46tables -t mangle -${2} XRAY \
-			-p ${PROTO} --dport 53 \
-			-j TPROXY --on-port 20801 --tproxy-mark ${MARK}
+    ip46tables -t mangle -${2} XRAY \
+      -p ${PROTO} --dport 53 \
+      -j TPROXY --on-port 20801 --tproxy-mark ${MARK}
 
-		ip46tables -t mangle -${2} XRAY_MASK \
-			-p ${PROTO} --dport 53 \
-			-j MARK --set-mark ${MARK}
-	done
+    ip46tables -t mangle -${2} XRAY_MASK \
+      -p ${PROTO} --dport 53 \
+      -j MARK --set-mark ${MARK}
+  done
 
-	for IP in ${ALLOW_IP}
-	do
-		iptables -t mangle -${2} XRAY \
-			-d ${IP} -j RETURN
-		iptables -t mangle -${2} XRAY_MASK \
-			-d ${IP} -j RETURN
-	done
+  for IP in ${ALLOW_IP}
+  do
+    iptables -t mangle -${2} XRAY \
+      -d ${IP} -j RETURN
+    iptables -t mangle -${2} XRAY_MASK \
+      -d ${IP} -j RETURN
+  done
 
-	if [ ${ENABLE_IPv6} == 1 ]
-	then
-		for IP in ${ALLOW_IPv6} ${LOCAL_IPv6}
-		do
-			xray_subrule ${2} ${IP}
-		done
-	fi
+  if [ ${ENABLE_IPv6} == 1 ]
+  then
+    for IP in ${ALLOW_IPv6} ${LOCAL_IPv6}
+    do
+      xray_subrule ${2} ${IP}
+    done
+  fi
 
-	# ip46tables -t mangle -${2} OUTPUT \
-		# -o wlan+ \
-		# -j ACCEPT
-	for UID in ${ALLOW_ALL_UID}
-	do
-		[ -z ${UID} ] || \
-			ip46tables -t mangle -${2} XRAY_MASK \
-				-m owner --uid ${UID} -j RETURN
-	done
-	for UID in ${ALLOW_UDP_UID}
-	do
-		[ -z ${UID} ] || \
-			ip46tables -t mangle -${2} XRAY_MASK \
-				-p udp -m owner --uid ${UID} -j RETURN
-	done
+  # ip46tables -t mangle -${2} OUTPUT \
+    # -o wlan+ \
+    # -j ACCEPT
+  for UID in ${ALLOW_ALL_UID}
+  do
+    [ -z ${UID} ] || \
+      ip46tables -t mangle -${2} XRAY_MASK \
+        -m owner --uid ${UID} -j RETURN
+  done
+  for UID in ${ALLOW_UDP_UID}
+  do
+    [ -z ${UID} ] || \
+      ip46tables -t mangle -${2} XRAY_MASK \
+        -p udp -m owner --uid ${UID} -j RETURN
+  done
 
-	for PROTO in tcp udp
-	do
-		ip46tables -t mangle -${2} XRAY \
-			-p ${PROTO} \
-			-j TPROXY \
-			--on-port 20801 --tproxy-mark ${MARK}
+  for PROTO in tcp udp
+  do
+    ip46tables -t mangle -${2} XRAY \
+      -p ${PROTO} \
+      -j TPROXY \
+      --on-port 20801 --tproxy-mark ${MARK}
 
-		ip46tables -t mangle -${2} XRAY_MASK -p ${PROTO} \
-			-j MARK --set-mark ${MARK}
-	done
-	xray_final_rule ${2}
+    ip46tables -t mangle -${2} XRAY_MASK -p ${PROTO} \
+      -j MARK --set-mark ${MARK}
+  done
+  xray_final_rule ${2}
 }
 
 tiny_rule_1()
 {
-	allow_core nat ${1} ${2}
-	allow_core mangle ${1} ${2}
+  allow_core nat ${1} ${2}
+  allow_core mangle ${1} ${2}
 
-	iptables -t nat ${1} OUTPUT ${2} \
-		-w ${WAIT_TIME} \
-		-m owner \
-		--uid ${ALLOW_UID} \
-		-j ACCEPT
-	iptables -t mangle ${1} OUTPUT ${2} \
-		-w ${WAIT_TIME} \
-		-m owner \
-		--uid ${ALLOW_UID} \
-		-j ACCEPT
-	iptables -t mangle ${1} OUTPUT ${2} \
-		-w ${WAIT_TIME} \
-		-p tcp \
-		-m state \
-		--state NEW,ESTABLISHED,RELATED \
-		-j ACCEPT
-	( [ ${ALLOW_LOCAL_UDP} == 1 ] || [ ${ALLOW_REMOTE_UDP} == 1 ] ) && \
-		iptables -t mangle ${1} OUTPUT ${2} \
-		-w ${WAIT_TIME} \
-		-p udp \
-		-m state \
-		--state NEW,ESTABLISHED,RELATED \
-		-j ACCEPT
-	iptables -t mangle ${1} OUTPUT ${2} \
-		-w ${WAIT_TIME} \
-		-p udp \
-		--dport 53 \
-		-m state \
-		--state NEW,ESTABLISHED,RELATED \
-		-j ACCEPT
+  iptables -t nat ${1} OUTPUT ${2} \
+    -w ${WAIT_TIME} \
+    -m owner \
+    --uid ${ALLOW_UID} \
+    -j ACCEPT
+  iptables -t mangle ${1} OUTPUT ${2} \
+    -w ${WAIT_TIME} \
+    -m owner \
+    --uid ${ALLOW_UID} \
+    -j ACCEPT
+  iptables -t mangle ${1} OUTPUT ${2} \
+    -w ${WAIT_TIME} \
+    -p tcp \
+    -m state \
+    --state NEW,ESTABLISHED,RELATED \
+    -j ACCEPT
+  ( [ ${ALLOW_LOCAL_UDP} == 1 ] || [ ${ALLOW_REMOTE_UDP} == 1 ] ) && \
+    iptables -t mangle ${1} OUTPUT ${2} \
+    -w ${WAIT_TIME} \
+    -p udp \
+    -m state \
+    --state NEW,ESTABLISHED,RELATED \
+    -j ACCEPT
+  iptables -t mangle ${1} OUTPUT ${2} \
+    -w ${WAIT_TIME} \
+    -p udp \
+    --dport 53 \
+    -m state \
+    --state NEW,ESTABLISHED,RELATED \
+    -j ACCEPT
 }
 
 tiny_rule_2()
 {
-	allow_app_network nat ${1}
-	allow_app_network mangle ${1}
+  allow_app_network nat ${1}
+  allow_app_network mangle ${1}
 
-	# Begin proxy TCP
-	# iptables -t mangle ${1} OUTPUT -w ${WAIT_TIME} -m owner ! --uid 0-99999 -j DROP
-	[ ${ALLOW_LOCAL_TCP} == 1 ] || iptables -t nat ${1} OUTPUT \
-		-w ${WAIT_TIME} \
-		-p tcp \
-		-j REDIRECT \
-		--to ${TCP_PORT}
-	# iptables -t nat ${1} OUTPUT -w ${WAIT_TIME} -p udp \
-		# --dport 53 -j REDIRECT --to 65053
+  # Begin proxy TCP
+  # iptables -t mangle ${1} OUTPUT -w ${WAIT_TIME} -m owner ! --uid 0-99999 -j DROP
+  [ ${ALLOW_LOCAL_TCP} == 1 ] || iptables -t nat ${1} OUTPUT \
+    -w ${WAIT_TIME} \
+    -p tcp \
+    -j REDIRECT \
+    --to ${TCP_PORT}
+  # iptables -t nat ${1} OUTPUT -w ${WAIT_TIME} -p udp \
+    # --dport 53 -j REDIRECT --to 65053
 
-	[ ${ALLOW_LOCAL_UDP} == 1 ] && iptables -t nat ${1} OUTPUT \
-		-w ${WAIT_TIME} \
-		-p udp \
-		-j ACCEPT
+  [ ${ALLOW_LOCAL_UDP} == 1 ] && iptables -t nat ${1} OUTPUT \
+    -w ${WAIT_TIME} \
+    -p udp \
+    -j ACCEPT
 
-	# Allow DNS network
-	iptables -t nat ${1} OUTPUT \
-		-w ${WAIT_TIME} \
-		-p udp \
-		--dport 53 \
-		-j ACCEPT
+  # Allow DNS network
+  iptables -t nat ${1} OUTPUT \
+    -w ${WAIT_TIME} \
+    -p udp \
+    --dport 53 \
+    -j ACCEPT
 
-	iptables -t mangle -P OUTPUT ${2} -w ${WAIT_TIME}
-	# End proxy TCP
+  iptables -t mangle -P OUTPUT ${2} -w ${WAIT_TIME}
+  # End proxy TCP
 
-	# Begin proxy forward
-	iptables -t mangle -P FORWARD ${2} -w ${WAIT_TIME}
-	ip6tables -t mangle -P FORWARD ${2} -w ${WAIT_TIME}
-	[ ${ALLOW_REMOTE_TCP} == 1 ] || iptables -t nat ${1} PREROUTING \
-		-w ${WAIT_TIME} \
-		-p tcp \
-		-j REDIRECT \
-		--to ${TCP_PORT}
-	# iptables -t nat ${1} PREROUTING -w ${WAIT_TIME} \
-		# -p udp --dport 53 -j REDIRECT --to 65053
+  # Begin proxy forward
+  iptables -t mangle -P FORWARD ${2} -w ${WAIT_TIME}
+  ip6tables -t mangle -P FORWARD ${2} -w ${WAIT_TIME}
+  [ ${ALLOW_REMOTE_TCP} == 1 ] || iptables -t nat ${1} PREROUTING \
+    -w ${WAIT_TIME} \
+    -p tcp \
+    -j REDIRECT \
+    --to ${TCP_PORT}
+  # iptables -t nat ${1} PREROUTING -w ${WAIT_TIME} \
+    # -p udp --dport 53 -j REDIRECT --to 65053
 
-	[ ${ALLOW_REMOTE_UDP} == 1 ] && iptables -t mangle ${1} FORWARD \
-		-w ${WAIT_TIME} \
-		-p udp \
-		-j ACCEPT
+  [ ${ALLOW_REMOTE_UDP} == 1 ] && iptables -t mangle ${1} FORWARD \
+    -w ${WAIT_TIME} \
+    -p udp \
+    -j ACCEPT
 
-	# Allow forward DNS network
-	iptables -t mangle ${1} FORWARD \
-		-w ${WAIT_TIME} \
-		-p udp \
-		--dport 53 \
-		-j ACCEPT
-	# End proxy forward
+  # Allow forward DNS network
+  iptables -t mangle ${1} FORWARD \
+    -w ${WAIT_TIME} \
+    -p udp \
+    --dport 53 \
+    -j ACCEPT
+  # End proxy forward
 }
 
 xray_open() {
-	if [ ${ENABLE_IPv6} == 1 ]
-	then
-		for IP in $(ip -6 addr | grep inet | awk '{print $2}' | grep '^2')
-		do
-			if [ ! -z "${IP}" ]
-			then
-				LOCAL_IPv6="${LOCAL_IPv6} ${IP}"
-			fi
-		done
-	fi
+  if [ ${ENABLE_IPv6} == 1 ]
+  then
+    for IP in $(ip -6 addr | grep inet | awk '{print $2}' | grep '^2')
+    do
+      if [ ! -z "${IP}" ]
+      then
+        LOCAL_IPv6="${LOCAL_IPv6} ${IP}"
+      fi
+    done
+  fi
 
-	generate_uid
-	load_configuration
+  generate_uid
+  load_configuration
 
-	${home_path}/busybox nohup \
-		${home_path}/busybox setuidgid 0:${GID} \
-		${home_path}/xray run \
-		-c ${home_path}/config.json 2>&1 > ${home_path}/xray.log &
-	${home_path}/thread_socket \
-		-p ${TCP_PORT} \
-		-u ${ALLOW_UID} \
-		-r ${SERVER_ADDR} \
-		-d &> ${home_path}/sock.log
-	ip46tables -t mangle -N XRAY
-	ip46tables -t mangle -N XRAY_MASK
-	xray_rule add A
+  ${home_path}/busybox nohup \
+    ${home_path}/busybox setuidgid 0:${GID} \
+    ${home_path}/xray run \
+    -c ${home_path}/config.json 2>&1 > ${home_path}/xray.log &
+  ${home_path}/thread_socket \
+    -p ${TCP_PORT} \
+    -u ${ALLOW_UID} \
+    -r ${SERVER_ADDR} \
+    -d &> ${home_path}/sock.log
+  ip46tables -t mangle -N XRAY
+  ip46tables -t mangle -N XRAY_MASK
+  xray_rule add A
 
-	[ ${ENABLE_IPv6} == 0 ] && ip -6 rule add unreachable pref ${PREF} # Deny IPV6
+  [ ${ENABLE_IPv6} == 0 ] && ip -6 rule add unreachable pref ${PREF} # Deny IPV6
 
-	mv ${0%/*}/disabled ${0%/*}/enabled && echo "xray" > ${0%/*}/enabled
-	echo -e "\x1b[92mXray Done.\x1b[0m"
-	exit 0
+  mv ${0%/*}/disabled ${0%/*}/enabled && echo "xray" > ${0%/*}/enabled
+  echo -e "\x1b[92mXray Done.\x1b[0m"
+  exit 0
 }
 
 xray_close() {
-	load_configuration
+  load_configuration
 
-	xray_rule del D
-	ip46tables -t mangle -X XRAY
-	ip46tables -t mangle -X XRAY_MASK
+  xray_rule del D
+  ip46tables -t mangle -X XRAY
+  ip46tables -t mangle -X XRAY_MASK
 
-	[ ${ENABLE_IPv6} == 0 ] && ip -6 rule del pref ${PREF} # Allow IPV6
+  [ ${ENABLE_IPv6} == 0 ] && ip -6 rule del pref ${PREF} # Allow IPV6
 
-	killall xray \
-		thread_socket
+  killall xray \
+    thread_socket
 
-	rm -f ${home_path}/.uid
-	mv ${0%/*}/enabled ${0%/*}/disabled
+  rm -f ${home_path}/.uid
+  mv ${0%/*}/enabled ${0%/*}/disabled
 }
 
 tiny_open() {
-	echo 1 > /proc/sys/net/ipv4/ip_forward
-	echo 1 > /proc/sys/net/ipv4/ip_dynaddr
+  echo 1 > /proc/sys/net/ipv4/ip_forward
+  echo 1 > /proc/sys/net/ipv4/ip_dynaddr
 
-	generate_uid
+  generate_uid
 
-	create_tun
+  create_tun
 
-	ip -6 rule add unreachable pref ${PREF}
-	${home_path}/thread_socket \
-		-p ${TCP_PORT} \
-		-u ${ALLOW_UID} \
-		-r ${SERVER_ADDR} \
-		-d &> ${home_path}/sock.log
+  ip -6 rule add unreachable pref ${PREF}
+  ${home_path}/thread_socket \
+    -p ${TCP_PORT} \
+    -u ${ALLOW_UID} \
+    -r ${SERVER_ADDR} \
+    -d &> ${home_path}/sock.log
 
-	tiny_rule_1 -I 1
+  tiny_rule_1 -I 1
 
-	tiny_rule_2 -A DROP
+  tiny_rule_2 -A DROP
 
-	mv ${0%/*}/disabled ${0%/*}/enabled && echo "thread_socket" > ${0%/*}/enabled
-	echo -e "\x1b[92mTiny Done.\x1b[0m"
-	exit 0
+  mv ${0%/*}/disabled ${0%/*}/enabled && echo "thread_socket" > ${0%/*}/enabled
+  echo -e "\x1b[92mTiny Done.\x1b[0m"
+  exit 0
 }
 
 tiny_close() {
-	echo 0 > /proc/sys/net/ipv4/ip_forward
-	echo 0 > /proc/sys/net/ipv4/ip_dynaddr
+  echo 0 > /proc/sys/net/ipv4/ip_forward
+  echo 0 > /proc/sys/net/ipv4/ip_dynaddr
 
-	load_configuration
+  load_configuration
 
-	ip -6 rule del pref ${PREF}
-	killall thread_socket
+  ip -6 rule del pref ${PREF}
+  killall thread_socket
 
-	tiny_rule_1 -D
+  tiny_rule_1 -D
 
-	tiny_rule_2 -D ACCEPT
+  tiny_rule_2 -D ACCEPT
 
-	rm -f ${home_path}/.uid
-	mv ${0%/*}/enabled ${0%/*}/disabled
+  rm -f ${home_path}/.uid
+  mv ${0%/*}/enabled ${0%/*}/disabled
 }
 
 close() {
-	case $(cat ${0%/*}/enabled) in
-		'thread_socket')
-			tiny_close
-			;;
-		'xray')
-			xray_close
-			;;
-		*)
-			echo 'Undefined error.'
-			exit 127
-	esac
+  case $(cat ${0%/*}/enabled) in
+    'thread_socket')
+      tiny_close
+      ;;
+    'xray')
+      xray_close
+      ;;
+    *)
+      echo 'Undefined error.'
+      exit 127
+  esac
 }
 
 if [ -f ${0%/*}/disabled ]
 then
-	if [ ${#} -eq 1 ]
-	then
-		case ${1} in
-			't')
-				tiny_open
-				;;
-			'x')
-				xray_open
-				;;
-			's')
-				echo 'MLKit is stopped.'
-				exit 0
-				;;
-			*)
-				echo "Undefined core."
-				exit -1
-		esac
-	else
-		echo "Need a parameter of core."
-		exit -3
-	fi
+  if [ ${#} -eq 1 ]
+  then
+    case ${1} in
+      't')
+        tiny_open
+        ;;
+      'x')
+        xray_open
+        ;;
+      's')
+        echo 'MLKit is stopped.'
+        exit 0
+        ;;
+      *)
+        echo "Undefined core."
+        exit -1
+    esac
+  else
+    echo "Need a parameter of core."
+    exit -3
+  fi
 elif [ -f ${0%/*}/enabled ]
 then
-	if [ ${#} -le 2 ]
-	then
-		status=$(cat ${0%/*}/enabled)
-		case ${1} in
-			't')
-				if [ 'thread_socket' == ${status} ]
-				then
-					tiny_close
-					exit 0
-				else
-					close
-					tiny_open
-				fi
-				;;
-			'x')
-				if [ 'xray' == ${status} ]
-				then
-					load_configuration
-					if [ 'r' == "${2}" ] && [ ${ENABLE_IPv6} == 1 ]
-					then
-						origin_LOCAL_IPv6=${LOCAL_IPv6}
-						xray_final_rule D
+  if [ ${#} -le 2 ]
+  then
+    status=$(cat ${0%/*}/enabled)
+    case ${1} in
+      't')
+        if [ 'thread_socket' == ${status} ]
+        then
+          tiny_close
+          exit 0
+        else
+          close
+          tiny_open
+        fi
+        ;;
+      'x')
+        if [ 'xray' == ${status} ]
+        then
+          load_configuration
+          if [ 'r' == "${2}" ] && [ ${ENABLE_IPv6} == 1 ]
+          then
+            origin_LOCAL_IPv6=${LOCAL_IPv6}
+            xray_final_rule D
 
-						LOCAL_IPv6=''
-						for IP in $(ip -6 addr | grep inet | awk '{print $2}' | grep '^2')
-						do
-							if [ ! -z ${IP} ]
-							then
-								LOCAL_IPv6="${LOCAL_IPv6} ${IP}"
-							fi
-						done
-						if [ ! -z "${origin_LOCAL_IPv6}" ]
-						then
-							for IP in ${origin_LOCAL_IPv6}
-							do
-								xray_subrule D ${IP}
-							done
-						fi
-						if [ ! -z "${LOCAL_IPv6}" ]
-						then
-							for IP in ${LOCAL_IPv6}
-							do
-								xray_subrule A ${IP}
-							done
-							echo "Refresh IPv6!"
-						else
-							echo 'Refresh failed.'
-						fi
+            LOCAL_IPv6=''
+            for IP in $(ip -6 addr | grep inet | awk '{print $2}' | grep '^2')
+            do
+              if [ ! -z ${IP} ]
+              then
+                LOCAL_IPv6="${LOCAL_IPv6} ${IP}"
+              fi
+            done
+            if [ ! -z "${origin_LOCAL_IPv6}" ]
+            then
+              for IP in ${origin_LOCAL_IPv6}
+              do
+                xray_subrule D ${IP}
+              done
+            fi
+            if [ ! -z "${LOCAL_IPv6}" ]
+            then
+              for IP in ${LOCAL_IPv6}
+              do
+                xray_subrule A ${IP}
+              done
+              echo "Refresh IPv6!"
+            else
+              echo 'Refresh failed.'
+            fi
 
-						xray_final_rule A
-						generate_uid
-						exit 0
-					fi
-					[ "${2}" != 'r' ] && xray_close
-					exit 0
-				else
-					if [ 'r' != "${2}" ]
-					then
-						close
-						xray_open
-					fi
-				fi
-				;;
-			's')
-				echo "MLKit is running. (${status})"
-				exit 0
-				;;
-			*)
-				echo "Core selected is invalid."
-		esac
-	else
-		echo "Need a parameter of core."
-		exit -3
-	fi
+            xray_final_rule A
+            generate_uid
+            exit 0
+          fi
+          [ "${2}" != 'r' ] && xray_close
+          exit 0
+        else
+          if [ 'r' != "${2}" ]
+          then
+            close
+            xray_open
+          fi
+        fi
+        ;;
+      's')
+        echo "MLKit is running. (${status})"
+        exit 0
+        ;;
+      *)
+        echo "Core selected is invalid."
+    esac
+  else
+    echo "Need a parameter of core."
+    exit -3
+  fi
 else
-	echo "Undefined error."
-	exit 1
+  echo "Undefined error."
+  exit 1
 fi
 exit 127
 
