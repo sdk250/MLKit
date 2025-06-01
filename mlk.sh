@@ -45,10 +45,10 @@ ALLOW_ALL_UID=''
 ALLOW_UDP_UID=''
 
 # 放行本机DNS
-ALLOW_LOCAL_DNS=1
+ALLOW_LOCAL_DNS=0
 
 # 放行热点DNS
-ALLOW_REMOTE_DNS=1
+ALLOW_REMOTE_DNS=0
 
 # 放行本机UDP
 ALLOW_LOCAL_UDP=0
@@ -57,7 +57,7 @@ ALLOW_LOCAL_UDP=0
 ALLOW_LOCAL_TCP=0
 
 # 放行热点UDP
-ALLOW_REMOTE_UDP=1
+ALLOW_REMOTE_UDP=0
 
 # 放行热点TCP
 ALLOW_REMOTE_TCP=0
@@ -259,17 +259,71 @@ xray_subrule()
 		-d ${2} -j RETURN
 }
 
+xray_final_rule()
+{
+	for PROTO in tcp udp
+	do
+		ip46tables -t mangle \
+			-${1} PREROUTING \
+			-w 2 \
+			-p ${PROTO} -j XRAY
+		ip46tables -t mangle \
+			-${1} OUTPUT \
+			-w 2 \
+			-p ${PROTO} \
+			-m owner ! --gid ${GID} -j XRAY_MASK
+	done
+}
+
 xray_rule()
 {
 	ip46rule ${1} fwmark ${MARK} lookup ${TABLE} pref ${PREF}
 	ip46route ${1} local default dev lo table ${TABLE}
 
-	ip46tables -t mangle -${2} PREROUTING -p udp --dport 67:68 -j ACCEPT
+	ip46tables -t mangle -${2} XRAY \
+		-p udp --dport 67:68 \
+		-j RETURN
+
+	[ ${ALLOW_REMOTE_UDP} == 1 ] && \
+		ip46tables -t mangle \
+			-${2} XRAY \
+			-p udp ! --dport 53 \
+			-m mark ! --mark ${MARK} \
+			-j RETURN
+	[ ${ALLOW_LOCAL_UDP} == 1 ] && \
+		ip46tables -t mangle \
+			-${2} XRAY_MASK \
+			-p udp ! --dport 53 \
+			-j RETURN
+	[ ${ALLOW_REMOTE_TCP} == 1 ] && \
+		ip46tables -t mangle \
+			-${2} XRAY \
+			-p tcp \
+			-m mark ! --mark ${MARK} \
+			-j RETURN
+	[ ${ALLOW_LOCAL_TCP} == 1 ] && \
+		ip46tables -t mangle \
+			-${2} XRAY_MASK \
+			-p tcp \
+			-j RETURN
+
 	for PROTO in tcp udp
 	do
-		ip46tables -t mangle -${2} PREROUTING \
+		[ ${ALLOW_REMOTE_DNS} == 1 ] && \
+			ip46tables -t mangle -${2} XRAY \
+				-p ${PROTO} --dport 53 \
+				-m mark ! --mark ${MARK} \
+				-j RETURN
+
+		[ ${ALLOW_LOCAL_DNS} == 1 ] && \
+			ip46tables -t mangle -${2} XRAY_MASK \
+				-p ${PROTO} --dport 53 \
+				-j RETURN
+
+		ip46tables -t mangle -${2} XRAY \
 			-p ${PROTO} --dport 53 \
 			-j TPROXY --on-port 20801 --tproxy-mark ${MARK}
+
 		ip46tables -t mangle -${2} XRAY_MASK \
 			-p ${PROTO} --dport 53 \
 			-j MARK --set-mark ${MARK}
@@ -291,14 +345,6 @@ xray_rule()
 		done
 	fi
 
-	# for LOOKUP in ${ALLOW_LOOKUP}
-	# do
-		# # Allow lookup
-		# ip46tables -t mangle -${2} OUTPUT \
-			# -w ${WAIT_TIME} \
-			# -o ${LOOKUP} \
-			# -j ACCEPT
-	# done
 	# ip46tables -t mangle -${2} OUTPUT \
 		# -o wlan+ \
 		# -j ACCEPT
@@ -315,19 +361,6 @@ xray_rule()
 				-p udp -m owner --uid ${UID} -j RETURN
 	done
 
-	[ ${ALLOW_REMOTE_UDP} == 1 ] && iptables -t mangle -${2} PREROUTING \
-		-s 192.168/16 \
-		-p udp \
-		! --dport 53 \
-		-j ACCEPT
-	[ ${ALLOW_REMOTE_UDP} == 1 ] && [ ${ENABLE_IPv6} == 1 ] && ip6tables \
-		-t mangle \
-		-${2} PREROUTING \
-		-s fe80::/64 \
-		-p udp \
-		! --dport 53 \
-		-j ACCEPT
-
 	for PROTO in tcp udp
 	do
 		ip46tables -t mangle -${2} XRAY \
@@ -337,12 +370,8 @@ xray_rule()
 
 		ip46tables -t mangle -${2} XRAY_MASK -p ${PROTO} \
 			-j MARK --set-mark ${MARK}
-
-		ip46tables -t mangle -${2} PREROUTING -w 2 -p ${PROTO} -j XRAY
-		ip46tables -t mangle -${2} OUTPUT -w 2 \
-			-p ${PROTO} \
-			-m owner ! --gid ${GID} -j XRAY_MASK
 	done
+	xray_final_rule ${2}
 }
 
 v2ray_rule_1()
@@ -741,14 +770,7 @@ then
 					if [ 'r' == "${2}" ] && [ ${ENABLE_IPv6} == 1 ]
 					then
 						origin_LOCAL_IPv6=${LOCAL_IPv6}
-						ip46tables -t mangle \
-							-D PREROUTING \
-							-w 2 -p tcp -j XRAY
-						ip46tables -t mangle \
-							-D OUTPUT \
-							-w 2 \
-							-p tcp \
-							-m owner ! --gid ${GID} -j XRAY_MASK
+						xray_final_rule D
 
 						LOCAL_IPv6=''
 						for IP in $(ip -6 addr | grep inet | awk '{print $2}' | grep '^2')
@@ -776,14 +798,7 @@ then
 							echo 'Refresh failed.'
 						fi
 
-						ip46tables -t mangle \
-							-A PREROUTING \
-							-w 2 -p tcp -j XRAY
-						ip46tables -t mangle \
-							-A OUTPUT \
-							-w 2 \
-							-p tcp \
-							-m owner ! --gid ${GID} -j XRAY_MASK
+						xray_final_rule A
 						generate_uid
 						exit 0
 					fi
