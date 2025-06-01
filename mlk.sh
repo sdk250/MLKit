@@ -62,6 +62,9 @@ ALLOW_REMOTE_UDP=0
 # 放行热点TCP
 ALLOW_REMOTE_TCP=0
 
+# 放行 WiFi
+ALLOW_WLAN=0
+
 # 需要放行的网卡，添加 wlan+ 进入可以放行Wifi
 ALLOW_LOOKUP='tun+ lo'
 
@@ -103,6 +106,7 @@ generate_uid()
   echo "ALLOW_LOCAL_TCP=${ALLOW_LOCAL_TCP}" >> ${home_path}/.uid
   echo "ALLOW_REMOTE_UDP=${ALLOW_REMOTE_UDP}" >> ${home_path}/.uid
   echo "ALLOW_REMOTE_TCP=${ALLOW_REMOTE_TCP}" >> ${home_path}/.uid
+  echo "ALLOW_WLAN=${ALLOW_WLAN}" >> ${home_path}/.uid
   echo "ALLOW_LOOKUP=${ALLOW_LOOKUP}" >> ${home_path}/.uid
   echo "ALLOW_UID=${ALLOW_UID}" >> ${home_path}/.uid
   echo "ALLOW_PORT=${ALLOW_PORT}" >> ${home_path}/.uid
@@ -169,6 +173,7 @@ load_configuration()
   ALLOW_LOCAL_TCP="$(find_configuration ALLOW_LOCAL_TCP)"
   ALLOW_REMOTE_UDP="$(find_configuration ALLOW_REMOTE_UDP)"
   ALLOW_REMOTE_TCP="$(find_configuration ALLOW_REMOTE_TCP)"
+  ALLOW_WLAN="$(find_configuration ALLOW_WLAN)"
   ALLOW_LOOKUP="$(find_configuration ALLOW_LOOKUP)"
   ALLOW_UID="$(find_configuration ALLOW_UID)"
   ALLOW_PORT="$(find_configuration ALLOW_PORT)"
@@ -223,7 +228,10 @@ allow_core()
       -d ${IP} \
       -j ACCEPT
   done
-  for LOOKUP in ${ALLOW_LOOKUP}
+
+  local wlan=''
+  [ ${ALLOW_WLAN} == 1 ] && wlan='wlan+'
+  for LOOKUP in ${ALLOW_LOOKUP} ${wlan}
   do
     # Allow lookup
     iptables -t ${1} ${2} OUTPUT ${3} \
@@ -345,9 +353,11 @@ xray_rule()
     done
   fi
 
-  # ip46tables -t mangle -${2} OUTPUT \
-    # -o wlan+ \
-    # -j ACCEPT
+  [ ${ALLOW_WLAN} == 1 ] && \
+    ip46tables -t mangle -${2} OUTPUT \
+      -o wlan+ \
+      -j ACCEPT
+
   for UID in ${ALLOW_ALL_UID}
   do
     [ -z ${UID} ] || \
