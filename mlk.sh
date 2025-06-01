@@ -374,63 +374,6 @@ xray_rule()
 	xray_final_rule ${2}
 }
 
-v2ray_rule_1()
-{
-	iptables -t filter ${1} FORWARD ${2} \
-		-w ${WAIT_TIME} \
-		-i tun+ \
-		-j ACCEPT
-	iptables -t filter ${1} FORWARD ${2} \
-		-w ${WAIT_TIME} \
-		-o tun+ \
-		-j ACCEPT
-	iptables -t mangle ${1} PREROUTING ${2} \
-		-w ${WAIT_TIME} \
-		-i tun+ \
-		-j ACCEPT
-	iptables -t mangle ${1} OUTPUT ${2} \
-		-w ${WAIT_TIME} \
-		-m owner \
-		--uid ${ALLOW_UID} \
-		-j ACCEPT
-
-	# Allow DNS query service
-	[ ${ALLOW_LOCAL_DNS} == 1 ] && iptables -t mangle ${1} OUTPUT ${2} \
-		-w ${WAIT_TIME} \
-		-p udp \
-		--dport 53 \
-		-j ACCEPT
-	[ ${ALLOW_REMOTE_DNS} == 1 ] && iptables -t mangle ${1} PREROUTING ${2} \
-		-w ${WAIT_TIME} \
-		-p udp \
-		--dport 53 \
-		-j ACCEPT
-
-	allow_core mangle ${1} ${2}
-}
-
-v2ray_rule_2()
-{
-	allow_app_network mangle ${1}
-
-	[ ${ALLOW_REMOTE_UDP} == 1 ] && iptables -t mangle ${1} PREROUTING \
-		-w ${WAIT_TIME} \
-		-p udp \
-		-j ACCEPT
-	[ ${ALLOW_REMOTE_TCP} == 1 ] && iptables -t mangle ${1} PREROUTING \
-		-w ${WAIT_TIME} \
-		-p tcp \
-		-j ACCEPT
-	[ ${ALLOW_LOCAL_UDP} == 1 ] && iptables -t mangle ${1} OUTPUT \
-		-w ${WAIT_TIME} \
-		-p udp \
-		-j ACCEPT
-	[ ${ALLOW_LOCAL_TCP} == 1 ] && iptables -t mangle ${1} OUTPUT \
-		-w ${WAIT_TIME} \
-		-p tcp \
-		-j ACCEPT
-}
-
 tiny_rule_1()
 {
 	allow_core nat ${1} ${2}
@@ -521,86 +464,6 @@ tiny_rule_2()
 		--dport 53 \
 		-j ACCEPT
 	# End proxy forward
-}
-
-v2ray_open() {
-	echo 1 > /proc/sys/net/ipv4/ip_forward
-	echo 1 > /proc/sys/net/ipv4/ip_dynaddr
-
-	generate_uid
-
-	create_tun
-
-	v2ray_rule_1 -I 1
-
-	v2ray_rule_2 -A
-
-	# iptables -t mangle -A OUTPUT -w ${WAIT_TIME} \
-		# -m owner ! --uid 0-99999 -j DROP # Deny network for kernel
-
-	iptables -t mangle -A OUTPUT \
-		-w ${WAIT_TIME} \
-		-j MARK \
-		--set-xmark ${MARK}
-	iptables -t mangle -A PREROUTING \
-		-w ${WAIT_TIME} \
-		-j MARK \
-		--set-xmark ${MARK}
-
-	${home_path}/thread_socket \
-		-p ${TCP_PORT} \
-		-u ${ALLOW_UID} \
-		-r ${SERVER_ADDR} \
-		-d &> ${home_path}/sock.log
-	nohup \
-		${home_path}/v2ray run \
-		-config ${home_path}/_v2.json \
-		-format jsonv5 \
-		&> ${home_path}/v2.log &
-	sleep ${WAIT_TIME}
-	ip address add ${TUN_ADDR} dev ${TUNDEV}
-	ip link set up dev ${TUNDEV} qlen 1000
-	ip rule add fwmark ${MARK} lookup ${TABLE} pref ${PREF}
-	ip route add default via ${TUN_ADDR%/*} dev ${TUNDEV} table ${TABLE}
-	# ip -6 rule add unreachable pref ${PREF} # Deny IPV6
-
-	mv ${0%/*}/disabled ${0%/*}/enabled && echo "v2ray" > ${0%/*}/enabled
-	echo -e "\x1b[92mV2ray Done.\x1b[0m"
-	exit 0
-}
-
-v2ray_close() {
-	echo 0 > /proc/sys/net/ipv4/ip_forward
-	echo 0 > /proc/sys/net/ipv4/ip_dynaddr
-
-	load_configuration
-
-	v2ray_rule_1 -D
-
-	v2ray_rule_2 -D
-
-	# iptables -t mangle -D OUTPUT -w ${WAIT_TIME} \
-		# -m owner ! --uid 0-99999 -j DROP # Deny network for kernel
-
-	iptables -t mangle -D OUTPUT \
-		-w ${WAIT_TIME} \
-		-j MARK \
-		--set-xmark ${MARK}
-	iptables -t mangle -D PREROUTING \
-		-w ${WAIT_TIME} \
-		-j MARK \
-		--set-xmark ${MARK}
-
-	ip rule del pref ${PREF}
-	ip route del default dev ${TUNDEV} table ${TABLE}
-	# ip -6 rule del pref ${PREF} # Allow IPV6
-	ip link set down dev ${TUNDEV}
-	ip address del ${TUN_ADDR} dev ${TUNDEV}
-	killall v2ray \
-		thread_socket
-
-	rm -f ${home_path}/.uid
-	mv ${0%/*}/enabled ${0%/*}/disabled
 }
 
 xray_open() {
@@ -700,9 +563,6 @@ close() {
 		'thread_socket')
 			tiny_close
 			;;
-		'v2ray')
-			v2ray_close
-			;;
 		'xray')
 			xray_close
 			;;
@@ -716,23 +576,21 @@ if [ -f ${0%/*}/disabled ]
 then
 	if [ ${#} -eq 1 ]
 	then
-		if [ ${1} == "t" ]
-		then
-			tiny_open
-		elif [ ${1} == "v" ]
-		then
-			v2ray_open
-		elif [ 'x' == ${1} ]
-		then
-			xray_open
-		elif [ 's' == ${1} ]
-		then
-			echo 'MLKit is stopped.'
-			exit 0
-		else
-			echo "Undefined core."
-			exit -1
-		fi
+		case ${1} in
+			't')
+				tiny_open
+				;;
+			'x')
+				xray_open
+				;;
+			's')
+				echo 'MLKit is stopped.'
+				exit 0
+				;;
+			*)
+				echo "Undefined core."
+				exit -1
+		esac
 	else
 		echo "Need a parameter of core."
 		exit -3
@@ -751,16 +609,6 @@ then
 				else
 					close
 					tiny_open
-				fi
-				;;
-			'v')
-				if [ 'v2ray' == ${status} ]
-				then
-					v2ray_close
-					exit 0
-				else
-					close
-					v2ray_open
 				fi
 				;;
 			'x')
