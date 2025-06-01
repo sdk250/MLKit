@@ -81,6 +81,12 @@ PREF=100
 TUN_ADDR='172.24.0.1/30'
 WAIT_TIME=3
 
+echo_v()
+{
+  eval "local value=\$${1}"
+  echo "${1}=${value}" >> ${home_path}/.uid
+}
+
 generate_uid()
 {
   echo -e "# This file is automatical" \
@@ -92,31 +98,39 @@ generate_uid()
   find_uid "${ALLOW_UDP_PACKAGES}" "${ALLOW_UDP_UID}"
 
   # Saving configuration
-  echo "SERVER_ADDR=${SERVER_ADDR}" >> ${home_path}/.uid
-  echo "ALLOW_IP=${ALLOW_IP}" >> ${home_path}/.uid
-  echo "ALLOW_IPv6=${ALLOW_IPv6}" >> ${home_path}/.uid
-  echo "LOCAL_IPv6=${LOCAL_IPv6}" >> ${home_path}/.uid
-  echo "ENABLE_IPv6=${ENABLE_IPv6}" >> ${home_path}/.uid
-  echo "PACKAGES=${PACKAGES}" >> ${home_path}/.uid
-  echo "ALLOW_PACKAGES=${ALLOW_PACKAGES}" >> ${home_path}/.uid
-  echo "ALLOW_UDP_PACKAGES=${ALLOW_UDP_PACKAGES}" >> ${home_path}/.uid
-  echo "ALLOW_LOCAL_DNS=${ALLOW_LOCAL_DNS}" >> ${home_path}/.uid
-  echo "ALLOW_REMOTE_DNS=${ALLOW_REMOTE_DNS}" >> ${home_path}/.uid
-  echo "ALLOW_LOCAL_UDP=${ALLOW_LOCAL_UDP}" >> ${home_path}/.uid
-  echo "ALLOW_LOCAL_TCP=${ALLOW_LOCAL_TCP}" >> ${home_path}/.uid
-  echo "ALLOW_REMOTE_UDP=${ALLOW_REMOTE_UDP}" >> ${home_path}/.uid
-  echo "ALLOW_REMOTE_TCP=${ALLOW_REMOTE_TCP}" >> ${home_path}/.uid
-  echo "ALLOW_WLAN=${ALLOW_WLAN}" >> ${home_path}/.uid
-  echo "ALLOW_LOOKUP=${ALLOW_LOOKUP}" >> ${home_path}/.uid
-  echo "ALLOW_UID=${ALLOW_UID}" >> ${home_path}/.uid
-  echo "ALLOW_PORT=${ALLOW_PORT}" >> ${home_path}/.uid
-  echo "TCP_PORT=${TCP_PORT}" >> ${home_path}/.uid
-  echo "MARK=${MARK}" >> ${home_path}/.uid
-  echo "TUNDEV=${TUNDEV}" >> ${home_path}/.uid
-  echo "TABLE=${TABLE}" >> ${home_path}/.uid
-  echo "PREF=${PREF}" >> ${home_path}/.uid
-  echo "TUN_ADDR=${TUN_ADDR}" >> ${home_path}/.uid
-  echo "WAIT_TIME=${WAIT_TIME}" >> ${home_path}/.uid
+  local vars
+  vars=(
+    SERVER_ADDR
+    ALLOW_IP
+    ALLOW_IPv6
+    LOCAL_IPv6
+    ENABLE_IPv6
+    PACKAGES
+    ALLOW_PACKAGES
+    ALLOW_UDP_PACKAGES
+    ALLOW_LOCAL_DNS
+    ALLOW_REMOTE_DNS
+    ALLOW_LOCAL_UDP
+    ALLOW_LOCAL_TCP
+    ALLOW_REMOTE_UDP
+    ALLOW_REMOTE_TCP
+    ALLOW_WLAN
+    ALLOW_LOOKUP
+    ALLOW_UID
+    ALLOW_PORT
+    TCP_PORT
+    MARK
+    TUNDEV
+    TABLE
+    PREF
+    TUN_ADDR
+    WAIT_TIME
+  )
+
+  for var in ${vars[@]}
+  do
+    echo_v ${var}
+  done
 }
 
 find_uid()
