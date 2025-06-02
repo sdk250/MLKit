@@ -21,7 +21,8 @@
 
 核心为 `xray` ，在 `Tools/config.json` 中配置好相应的出站后就可以使用，具体配置可以看该文件夹下的参考。
 
-该模式支持 `全局 IPv6` ，只需要添加一个 `IPv6出站` 在 `config.json` 中并修改 `mlk.sh` 的字段 `ENABLE_IPv6` 为 `1` 即可。
+该模式支持 `全局 IPv6` ，只需要添加一个 `IPv6出站` 在 `config.json` 中并修改 `mlk.sh` 的字段 `ENABLE_IPv6` 为 `1` 即可。  
+如果遇到 IPv6 不可用的情况下，尝试: `./mlk.sh x r` 来刷新路由表。
 
 ## `s` 模式
 
