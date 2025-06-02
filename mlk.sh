@@ -285,15 +285,13 @@ xray_final_rule()
 {
   for PROTO in tcp udp
   do
-    ip46tables -t mangle \
-      -${1} PREROUTING \
-      -w 2 \
-      -p ${PROTO} -j XRAY
-    ip46tables -t mangle \
-      -${1} OUTPUT \
-      -w 2 \
+    ip46tables -t mangle -${1} XRAY \
       -p ${PROTO} \
-      -m owner ! --gid ${GID} -j XRAY_MASK
+      -j TPROXY \
+      --on-port 20801 --tproxy-mark ${MARK}
+    ip46tables -t mangle -${1} XRAY_MASK \
+      -p ${PROTO} \
+      -j MARK --set-mark ${MARK}
   done
 }
 
@@ -385,17 +383,19 @@ xray_rule()
         -p udp -m owner --uid ${UID} -j RETURN
   done
 
+  xray_final_rule ${2}
   for PROTO in tcp udp
   do
-    ip46tables -t mangle -${2} XRAY \
+    ip46tables -t mangle \
+      -${2} PREROUTING \
+      -w 2 \
+      -p ${PROTO} -j XRAY
+    ip46tables -t mangle \
+      -${2} OUTPUT \
+      -w 2 \
       -p ${PROTO} \
-      -j TPROXY \
-      --on-port 20801 --tproxy-mark ${MARK}
-
-    ip46tables -t mangle -${2} XRAY_MASK -p ${PROTO} \
-      -j MARK --set-mark ${MARK}
+      -m owner ! --gid ${GID} -j XRAY_MASK
   done
-  xray_final_rule ${2}
 }
 
 tiny_rule_1()
