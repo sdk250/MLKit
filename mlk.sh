@@ -7,20 +7,17 @@ home_path="${0%/*}/Tools"
 SERVER_ADDR='110.242.70.68'
 
 # Allow IP
-ALLOW_IP="127.0.0.1/32 \
+ALLOW_IP="127.0.0.0/8 \
   10.0.0.0/8 \
   172.16.0.0/12 \
   169.254.0.0/16 \
   224.0.0.0/4 \
   192.168.0.0/16 \
-  100.64.0.0/10 \
   240.0.0.0/4 \
   255.255.255.255/32 \
   ${SERVER_ADDR}/32"
 
 ALLOW_IPv6="fe80::/64"
-
-LOCAL_IPv6=''
 
 ENABLE_IPv6=1
 
@@ -103,7 +100,6 @@ generate_uid()
     SERVER_ADDR
     ALLOW_IP
     ALLOW_IPv6
-    LOCAL_IPv6
     ENABLE_IPv6
     PACKAGES
     ALLOW_PACKAGES
@@ -174,7 +170,6 @@ load_configuration()
   SERVER_ADDR="$(find_configuration SERVER_ADDR)"
   ALLOW_IP="$(find_configuration ALLOW_IP)"
   ALLOW_IPv6="$(find_configuration ALLOW_IPv6)"
-  LOCAL_IPv6="$(find_configuration LOCAL_IPv6)"
   ENABLE_IPv6="$(find_configuration ENABLE_IPv6)"
   PACKAGES="$(find_configuration PACKAGES)"
   ALLOW_PACKAGES="$(find_configuration ALLOW_PACKAGES)"
@@ -273,14 +268,6 @@ ip46rule()
   [ ${ENABLE_IPv6} == 1 ] && ip -6 rule ${@}
 }
 
-xray_subrule()
-{
-  ip6tables -t mangle -${1} XRAY \
-    -d ${2} -j RETURN
-  ip6tables -t mangle -${1} XRAY_MASK \
-    -d ${2} -j RETURN
-}
-
 xray_final_rule()
 {
   for PROTO in tcp udp
@@ -359,9 +346,12 @@ xray_rule()
 
   if [ ${ENABLE_IPv6} == 1 ]
   then
-    for IP in ${ALLOW_IPv6} ${LOCAL_IPv6}
+    for IP in ${ALLOW_IPv6}
     do
-      xray_subrule ${2} ${IP}
+      ip6tables -t mangle -${2} XRAY \
+        -d ${IP} -j RETURN
+      ip6tables -t mangle -${2} XRAY_MASK \
+        -d ${IP} -j RETURN
     done
   fi
 
@@ -384,6 +374,9 @@ xray_rule()
   done
 
   xray_final_rule ${2}
+  ip46tables -t mangle -${2} PREROUTING \
+    -p tcp \
+    -m socket -j ACCEPT
   for PROTO in tcp udp
   do
     ip46tables -t mangle \
@@ -491,17 +484,6 @@ tiny_rule_2()
 }
 
 xray_open() {
-  if [ ${ENABLE_IPv6} == 1 ]
-  then
-    for IP in $(ip -6 addr | grep inet | awk '{print $2}' | grep '^2')
-    do
-      if [ ! -z "${IP}" ]
-      then
-        LOCAL_IPv6="${LOCAL_IPv6} ${IP}"
-      fi
-    done
-  fi
-
   generate_uid
   load_configuration
 
@@ -638,50 +620,11 @@ then
       'x')
         if [ 'xray' == ${status} ]
         then
-          load_configuration
-          if [ 'r' == "${2}" ] && [ ${ENABLE_IPv6} == 1 ]
-          then
-            origin_LOCAL_IPv6=${LOCAL_IPv6}
-            xray_final_rule D
-
-            LOCAL_IPv6=''
-            for IP in $(ip -6 addr | grep inet | awk '{print $2}' | grep '^2')
-            do
-              if [ ! -z ${IP} ]
-              then
-                LOCAL_IPv6="${LOCAL_IPv6} ${IP}"
-              fi
-            done
-            if [ ! -z "${origin_LOCAL_IPv6}" ]
-            then
-              for IP in ${origin_LOCAL_IPv6}
-              do
-                xray_subrule D ${IP}
-              done
-            fi
-            if [ ! -z "${LOCAL_IPv6}" ]
-            then
-              for IP in ${LOCAL_IPv6}
-              do
-                xray_subrule A ${IP}
-              done
-              echo "Refresh IPv6!"
-            else
-              echo 'Refresh failed.'
-            fi
-
-            xray_final_rule A
-            generate_uid
-            exit 0
-          fi
-          [ "${2}" != 'r' ] && xray_close
+          xray_close
           exit 0
         else
-          if [ 'r' != "${2}" ]
-          then
-            close
-            xray_open
-          fi
+          close
+          xray_open
         fi
         ;;
       's')
