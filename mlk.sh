@@ -19,7 +19,7 @@ ALLOW_IP="127.0.0.0/8 \
 
 ALLOW_IPv6="fe80::/64"
 
-ENABLE_IPv6=1
+ENABLE_IPv6=0
 
 # 仅适用于Android系统
 PACKAGES="/data/system/packages.list"
@@ -70,6 +70,7 @@ ALLOW_UID=0
 
 ALLOW_PORT=20822
 TCP_PORT=20802
+XRAY_PORT=20801
 MARK=10086
 GID=10086
 TUNDEV='tunDev'
@@ -115,6 +116,7 @@ generate_uid()
     ALLOW_UID
     ALLOW_PORT
     TCP_PORT
+    XRAY_PORT
     MARK
     TUNDEV
     TABLE
@@ -187,67 +189,13 @@ load_configuration()
   ALLOW_UID="$(find_configuration ALLOW_UID)"
   ALLOW_PORT="$(find_configuration ALLOW_PORT)"
   TCP_PORT="$(find_configuration TCP_PORT)"
+  XRAY_PORT="$(find_configuration XRAY_PORT)"
   MARK="$(find_configuration MARK)"
   TUNDEV="$(find_configuration TUNDEV)"
   TABLE="$(find_configuration TABLE)"
   PREF="$(find_configuration PREF)"
   TUN_ADDR="$(find_configuration TUN_ADDR)"
   WAIT_TIME="$(find_configuration WAIT_TIME)"
-}
-
-allow_app_network()
-{
-  for UID in $(find_configuration uid)
-  do
-    iptables -t ${1} ${2} OUTPUT ${3} \
-      -w ${WAIT_TIME} \
-      -m owner \
-      --uid ${UID} \
-      -j ACCEPT
-  done
-  for UID in $(find_configuration udp_uid)
-  do
-    iptables -t ${1} ${2} OUTPUT ${3} \
-      -w ${WAIT_TIME} \
-      -p udp \
-      -m owner \
-      --uid ${UID} \
-      -j ACCEPT
-  done
-}
-
-allow_core()
-{
-  # Allow DHCP service
-  iptables -t ${1} ${2} OUTPUT ${3} \
-    -w ${WAIT_TIME} \
-    -p udp \
-    --dport 67:68 \
-    -j ACCEPT
-
-  for IP in ${ALLOW_IP}
-  do
-    # Allow IP range
-    iptables -t ${1} ${2} PREROUTING ${3} \
-      -w ${WAIT_TIME} \
-      -d ${IP} \
-      -j ACCEPT
-    iptables -t ${1} ${2} OUTPUT ${3} \
-      -w ${WAIT_TIME} \
-      -d ${IP} \
-      -j ACCEPT
-  done
-
-  local wlan=''
-  [ ${ALLOW_WLAN} == 1 ] && wlan='wlan+'
-  for LOOKUP in ${ALLOW_LOOKUP} ${wlan}
-  do
-    # Allow lookup
-    iptables -t ${1} ${2} OUTPUT ${3} \
-      -w ${WAIT_TIME} \
-      -o ${LOOKUP} \
-      -j ACCEPT
-  done
 }
 
 ip46tables()
@@ -275,7 +223,7 @@ xray_final_rule()
     ip46tables -t mangle -${1} XRAY \
       -p ${PROTO} \
       -j TPROXY \
-      --on-port 20801 --tproxy-mark ${MARK}
+      --on-port ${2} --tproxy-mark ${MARK}
     ip46tables -t mangle -${1} XRAY_MASK \
       -p ${PROTO} \
       -j MARK --set-mark ${MARK}
@@ -316,25 +264,42 @@ xray_rule()
 
   for PROTO in tcp udp
   do
-    [ ${ALLOW_REMOTE_DNS} == 1 ] && \
+    if [ ${ALLOW_REMOTE_DNS} == 1 ] || [ "${3}" == 'tiny' ]
+    then
       ip46tables -t mangle -${2} XRAY \
         -p ${PROTO} --dport 53 \
         -m mark ! --mark ${MARK} \
         -j RETURN
+    fi
 
-    [ ${ALLOW_LOCAL_DNS} == 1 ] && \
+    if [ ${ALLOW_LOCAL_DNS} == 1 ] || [ "${3}" == 'tiny' ]
+    then
       ip46tables -t mangle -${2} XRAY_MASK \
         -p ${PROTO} --dport 53 \
         -j RETURN
+    fi
 
     ip46tables -t mangle -${2} XRAY \
       -p ${PROTO} --dport 53 \
-      -j TPROXY --on-port 20801 --tproxy-mark ${MARK}
+      -j TPROXY --on-port ${XRAY_PORT} --tproxy-mark ${MARK}
 
     ip46tables -t mangle -${2} XRAY_MASK \
       -p ${PROTO} --dport 53 \
       -j MARK --set-mark ${MARK}
   done
+
+  [ "${3}" == 'tiny' ] && \
+    ip46tables -t mangle -${2} XRAY \
+      -p udp \
+      -j DROP
+  [ "${3}" == 'tiny' ] && \
+    ip46tables -t mangle -${2} XRAY_MASK \
+      -p udp \
+      -j DROP
+  [ "${3}" == 'tiny' ] && \
+    ip46tables -t mangle -${2} PREROUTING \
+      -p udp \
+      -m socket -j ACCEPT
 
   for IP in ${ALLOW_IP}
   do
@@ -364,19 +329,29 @@ xray_rule()
   do
     [ -z ${UID} ] || \
       ip46tables -t mangle -${2} XRAY_MASK \
-        -m owner --uid ${UID} -j RETURN
+        -m owner --uid ${UID} \
+        -j RETURN
   done
   for UID in ${ALLOW_UDP_UID}
   do
     [ -z ${UID} ] || \
       ip46tables -t mangle -${2} XRAY_MASK \
-        -p udp -m owner --uid ${UID} -j RETURN
+        -p udp \
+        -m owner --uid ${UID} \
+        -j RETURN
   done
 
-  xray_final_rule ${2}
+  if [ "${3}" == 'tiny' ]
+  then
+    xray_final_rule ${2} ${TCP_PORT}
+  else
+    xray_final_rule ${2} ${XRAY_PORT}
+  fi
+
   ip46tables -t mangle -${2} PREROUTING \
     -p tcp \
     -m socket -j ACCEPT
+
   for PROTO in tcp udp
   do
     ip46tables -t mangle \
@@ -391,99 +366,9 @@ xray_rule()
   done
 }
 
-tiny_rule_1()
+xray_open()
 {
-  allow_core nat ${1} ${2}
-  allow_core mangle ${1} ${2}
-
-  iptables -t nat ${1} OUTPUT ${2} \
-    -w ${WAIT_TIME} \
-    -m owner \
-    --uid ${ALLOW_UID} \
-    -j ACCEPT
-  iptables -t mangle ${1} OUTPUT ${2} \
-    -w ${WAIT_TIME} \
-    -m owner \
-    --uid ${ALLOW_UID} \
-    -j ACCEPT
-  iptables -t mangle ${1} OUTPUT ${2} \
-    -w ${WAIT_TIME} \
-    -p tcp \
-    -m state \
-    --state NEW,ESTABLISHED,RELATED \
-    -j ACCEPT
-  ( [ ${ALLOW_LOCAL_UDP} == 1 ] || [ ${ALLOW_REMOTE_UDP} == 1 ] ) && \
-    iptables -t mangle ${1} OUTPUT ${2} \
-    -w ${WAIT_TIME} \
-    -p udp \
-    -m state \
-    --state NEW,ESTABLISHED,RELATED \
-    -j ACCEPT
-  iptables -t mangle ${1} OUTPUT ${2} \
-    -w ${WAIT_TIME} \
-    -p udp \
-    --dport 53 \
-    -m state \
-    --state NEW,ESTABLISHED,RELATED \
-    -j ACCEPT
-}
-
-tiny_rule_2()
-{
-  allow_app_network nat ${1}
-  allow_app_network mangle ${1}
-
-  # Begin proxy TCP
-  # iptables -t mangle ${1} OUTPUT -w ${WAIT_TIME} -m owner ! --uid 0-99999 -j DROP
-  [ ${ALLOW_LOCAL_TCP} == 1 ] || iptables -t nat ${1} OUTPUT \
-    -w ${WAIT_TIME} \
-    -p tcp \
-    -j REDIRECT \
-    --to ${TCP_PORT}
-  # iptables -t nat ${1} OUTPUT -w ${WAIT_TIME} -p udp \
-    # --dport 53 -j REDIRECT --to 65053
-
-  [ ${ALLOW_LOCAL_UDP} == 1 ] && iptables -t nat ${1} OUTPUT \
-    -w ${WAIT_TIME} \
-    -p udp \
-    -j ACCEPT
-
-  # Allow DNS network
-  iptables -t nat ${1} OUTPUT \
-    -w ${WAIT_TIME} \
-    -p udp \
-    --dport 53 \
-    -j ACCEPT
-
-  iptables -t mangle -P OUTPUT ${2} -w ${WAIT_TIME}
-  # End proxy TCP
-
-  # Begin proxy forward
-  iptables -t mangle -P FORWARD ${2} -w ${WAIT_TIME}
-  ip6tables -t mangle -P FORWARD ${2} -w ${WAIT_TIME}
-  [ ${ALLOW_REMOTE_TCP} == 1 ] || iptables -t nat ${1} PREROUTING \
-    -w ${WAIT_TIME} \
-    -p tcp \
-    -j REDIRECT \
-    --to ${TCP_PORT}
-  # iptables -t nat ${1} PREROUTING -w ${WAIT_TIME} \
-    # -p udp --dport 53 -j REDIRECT --to 65053
-
-  [ ${ALLOW_REMOTE_UDP} == 1 ] && iptables -t mangle ${1} FORWARD \
-    -w ${WAIT_TIME} \
-    -p udp \
-    -j ACCEPT
-
-  # Allow forward DNS network
-  iptables -t mangle ${1} FORWARD \
-    -w ${WAIT_TIME} \
-    -p udp \
-    --dport 53 \
-    -j ACCEPT
-  # End proxy forward
-}
-
-xray_open() {
+  mv ${0%/*}/disabled ${0%/*}/enabled && echo 'xray' > ${0%/*}/enabled
   generate_uid
   load_configuration
 
@@ -500,9 +385,9 @@ xray_open() {
   ip46tables -t mangle -N XRAY_MASK
   xray_rule add A
 
-  [ ${ENABLE_IPv6} == 0 ] && ip -6 rule add unreachable pref ${PREF} # Deny IPV6
+  [ ${ENABLE_IPv6} == 0 ] && \
+    ip -6 rule add unreachable pref ${PREF} # Deny IPV6
 
-  mv ${0%/*}/disabled ${0%/*}/enabled && echo "xray" > ${0%/*}/enabled
   echo -e "\x1b[92mXray Done.\x1b[0m"
   exit 0
 }
@@ -527,22 +412,25 @@ tiny_open() {
   echo 1 > /proc/sys/net/ipv4/ip_forward
   echo 1 > /proc/sys/net/ipv4/ip_dynaddr
 
-  generate_uid
+  mv ${0%/*}/disabled ${0%/*}/enabled && \
+    echo 'thread_socket' > ${0%/*}/enabled
 
-  create_tun
+  generate_uid
+  load_configuration
+
+  # create_tun
 
   ip -6 rule add unreachable pref ${PREF}
   ${home_path}/thread_socket \
     -p ${TCP_PORT} \
-    -u ${ALLOW_UID} \
+    -u 0 \
     -r ${SERVER_ADDR} \
     -d &> ${home_path}/sock.log
 
-  tiny_rule_1 -I 1
+  ip46tables -t mangle -N XRAY
+  ip46tables -t mangle -N XRAY_MASK
+  xray_rule add A tiny
 
-  tiny_rule_2 -A DROP
-
-  mv ${0%/*}/disabled ${0%/*}/enabled && echo "thread_socket" > ${0%/*}/enabled
   echo -e "\x1b[92mTiny Done.\x1b[0m"
   exit 0
 }
@@ -556,9 +444,9 @@ tiny_close() {
   ip -6 rule del pref ${PREF}
   killall thread_socket
 
-  tiny_rule_1 -D
-
-  tiny_rule_2 -D ACCEPT
+  xray_rule del D tiny
+  ip46tables -t mangle -X XRAY
+  ip46tables -t mangle -X XRAY_MASK
 
   rm -f ${home_path}/.uid
   mv ${0%/*}/enabled ${0%/*}/disabled
