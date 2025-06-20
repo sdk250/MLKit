@@ -216,26 +216,12 @@ ip46rule()
   [ ${ENABLE_IPv6} == 1 ] && ip -6 rule ${@}
 }
 
-xray_final_rule()
-{
-  for PROTO in tcp udp
-  do
-    ip46tables -t mangle -${1} XRAY \
-      -p ${PROTO} \
-      -j TPROXY \
-      --on-port ${2} --tproxy-mark ${MARK}
-    ip46tables -t mangle -${1} XRAY_MASK \
-      -p ${PROTO} \
-      -j MARK --set-mark ${MARK}
-  done
-}
-
 xray_rule()
 {
   ip46rule ${1} fwmark ${MARK} lookup ${TABLE} pref ${PREF}
   ip46route ${1} local default dev lo table ${TABLE}
 
-  ip46tables -t mangle -${2} XRAY \
+  ip46tables -t mangle -${2} XRAY_MASK \
     -p udp --dport 67:68 \
     -j RETURN
 
@@ -262,44 +248,31 @@ xray_rule()
       -p tcp \
       -j RETURN
 
-  for PROTO in tcp udp
-  do
-    if [ ${ALLOW_REMOTE_DNS} == 1 ] || [ "${3}" == 'tiny' ]
-    then
-      ip46tables -t mangle -${2} XRAY \
-        -p ${PROTO} --dport 53 \
-        -m mark ! --mark ${MARK} \
-        -j RETURN
-    fi
-
-    if [ ${ALLOW_LOCAL_DNS} == 1 ] || [ "${3}" == 'tiny' ]
-    then
-      ip46tables -t mangle -${2} XRAY_MASK \
-        -p ${PROTO} --dport 53 \
-        -j RETURN
-    fi
-
+  if [ ${ALLOW_REMOTE_DNS} == 1 ] || [ "${3}" == 'tiny' ]
+  then
     ip46tables -t mangle -${2} XRAY \
-      -p ${PROTO} --dport 53 \
-      -j TPROXY --on-port ${XRAY_PORT} --tproxy-mark ${MARK}
-
+      -p udp --dport 53 \
+      -m mark ! --mark ${MARK} \
+      -j RETURN
+  fi
+  if [ ${ALLOW_LOCAL_DNS} == 1 ] || [ "${3}" == 'tiny' ]
+  then
     ip46tables -t mangle -${2} XRAY_MASK \
-      -p ${PROTO} --dport 53 \
-      -j MARK --set-mark ${MARK}
-  done
+      -p udp --dport 53 \
+      -j RETURN
+  fi
 
-  [ "${3}" == 'tiny' ] && \
-    ip46tables -t mangle -${2} XRAY \
-      -p udp \
-      -j DROP
+  ip46tables -t mangle -${2} XRAY \
+    -p udp --dport 53 \
+    -j TPROXY --on-port ${4} --tproxy-mark ${MARK}
+  ip46tables -t mangle -${2} XRAY_MASK \
+    -p udp --dport 53 \
+    -j MARK --set-mark ${MARK}
+
   [ "${3}" == 'tiny' ] && \
     ip46tables -t mangle -${2} XRAY_MASK \
       -p udp \
       -j DROP
-  [ "${3}" == 'tiny' ] && \
-    ip46tables -t mangle -${2} PREROUTING \
-      -p udp \
-      -m socket -j ACCEPT
 
   for IP in ${ALLOW_IP}
   do
@@ -341,19 +314,27 @@ xray_rule()
         -j RETURN
   done
 
-  if [ "${3}" == 'tiny' ]
-  then
-    xray_final_rule ${2} ${TCP_PORT}
-  else
-    xray_final_rule ${2} ${XRAY_PORT}
-  fi
-
+  ip46tables -t mangle -${2} DIVERT \
+    -p tcp \
+    -j MARK --set-mark ${MARK}
+  ip46tables -t mangle -${2} DIVERT \
+    -p tcp \
+    -j ACCEPT
   ip46tables -t mangle -${2} PREROUTING \
     -p tcp \
-    -m socket -j ACCEPT
+    -m socket \
+    -j DIVERT
 
   for PROTO in tcp udp
   do
+    ip46tables -t mangle -${2} XRAY \
+      -p ${PROTO} \
+      -j TPROXY \
+      --on-port ${4} --tproxy-mark ${MARK}
+    ip46tables -t mangle -${2} XRAY_MASK \
+      -p ${PROTO} \
+      -j MARK --set-mark ${MARK}
+
     ip46tables -t mangle \
       -${2} PREROUTING \
       -w 2 \
@@ -381,9 +362,11 @@ xray_open()
     -u ${ALLOW_UID} \
     -r ${SERVER_ADDR} \
     -d &> ${home_path}/sock.log
+
   ip46tables -t mangle -N XRAY
   ip46tables -t mangle -N XRAY_MASK
-  xray_rule add A
+  ip46tables -t mangle -N DIVERT
+  xray_rule add A xray ${XRAY_PORT}
 
   [ ${ENABLE_IPv6} == 0 ] && \
     ip -6 rule add unreachable pref ${PREF} # Deny IPV6
@@ -395,9 +378,10 @@ xray_open()
 xray_close() {
   load_configuration
 
-  xray_rule del D
+  xray_rule del D xray ${XRAY_PORT}
   ip46tables -t mangle -X XRAY
   ip46tables -t mangle -X XRAY_MASK
+  ip46tables -t mangle -X DIVERT
 
   [ ${ENABLE_IPv6} == 0 ] && ip -6 rule del pref ${PREF} # Allow IPV6
 
@@ -429,7 +413,8 @@ tiny_open() {
 
   ip46tables -t mangle -N XRAY
   ip46tables -t mangle -N XRAY_MASK
-  xray_rule add A tiny
+  ip46tables -t mangle -N DIVERT
+  xray_rule add A tiny ${TCP_PORT}
 
   echo -e "\x1b[92mTiny Done.\x1b[0m"
   exit 0
@@ -444,9 +429,10 @@ tiny_close() {
   ip -6 rule del pref ${PREF}
   killall thread_socket
 
-  xray_rule del D tiny
+  xray_rule del D tiny ${TCP_PORT}
   ip46tables -t mangle -X XRAY
   ip46tables -t mangle -X XRAY_MASK
+  ip46tables -t mangle -X DIVERT
 
   rm -f ${home_path}/.uid
   mv ${0%/*}/enabled ${0%/*}/disabled
