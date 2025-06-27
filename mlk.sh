@@ -269,11 +269,6 @@ xray_rule()
     -p udp --dport 53 \
     -j MARK --set-mark ${MARK}
 
-  [ "${3}" == 'tiny' ] && \
-    ip46tables -t mangle -${2} XRAY_MASK \
-      -p udp \
-      -j DROP
-
   for IP in ${ALLOW_IP}
   do
     iptables -t mangle -${2} XRAY \
@@ -313,6 +308,11 @@ xray_rule()
         -m owner --uid ${UID} \
         -j RETURN
   done
+
+  [ "${3}" == 'tiny' ] && \
+    ip46tables -t mangle -${2} XRAY_MASK \
+      -p udp \
+      -j DROP
 
   ip46tables -t mangle -${2} DIVERT \
     -p tcp \
