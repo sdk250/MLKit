@@ -221,6 +221,10 @@ xray_rule()
   ip46rule ${1} fwmark ${MARK} lookup ${TABLE} pref ${PREF}
   ip46route ${1} local default dev lo table ${TABLE}
 
+  ip46tables -t mangle -${2} OUTPUT \
+    -m owner --gid ${GID} \
+    -j ACCEPT
+
   ip46tables -t mangle -${2} XRAY_MASK \
     -p udp --dport 67:68 \
     -j RETURN
@@ -337,13 +341,12 @@ xray_rule()
 
     ip46tables -t mangle \
       -${2} PREROUTING \
-      -w 2 \
-      -p ${PROTO} -j XRAY
+      -p ${PROTO} \
+      -j XRAY
     ip46tables -t mangle \
       -${2} OUTPUT \
-      -w 2 \
       -p ${PROTO} \
-      -m owner ! --gid ${GID} -j XRAY_MASK
+      -j XRAY_MASK
   done
 }
 
