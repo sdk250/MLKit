@@ -81,7 +81,7 @@ WAIT_TIME=3
 
 echo_v()
 {
-  eval "local value=\$${1}"
+  eval "local value=\"\$${1}\""
   echo "${1}=${value}" >> ${home_path}/.uid
 }
 
@@ -218,7 +218,7 @@ ip46rule()
 
 xray_rule()
 {
-  ip46rule ${1} fwmark ${MARK} lookup ${TABLE} pref ${PREF}
+  ip46rule ${1} fwmark ${MARK} table ${TABLE} pref ${PREF}
   ip46route ${1} local default dev lo table ${TABLE}
 
   ip46tables -t mangle -${2} OUTPUT \
@@ -252,6 +252,12 @@ xray_rule()
       -p tcp \
       -j RETURN
 
+  for CHAIN in XRAY XRAY_MASK
+  do
+    ip46tables -t mangle -${2} ${CHAIN} \
+      -p tcp --dport 853 \
+      -j DROP
+  done
   if [ ${ALLOW_REMOTE_DNS} == 1 ] || [ "${3}" == 'tiny' ]
   then
     ip46tables -t mangle -${2} XRAY \
@@ -264,14 +270,14 @@ xray_rule()
     ip46tables -t mangle -${2} XRAY_MASK \
       -p udp --dport 53 \
       -j RETURN
+  else
+    ip46tables -t mangle -${2} XRAY_MASK \
+      -p udp --dport 53 \
+      -j MARK --set-mark ${MARK}
   fi
-
   ip46tables -t mangle -${2} XRAY \
     -p udp --dport 53 \
     -j TPROXY --on-port ${4} --tproxy-mark ${MARK}
-  ip46tables -t mangle -${2} XRAY_MASK \
-    -p udp --dport 53 \
-    -j MARK --set-mark ${MARK}
 
   for IP in ${ALLOW_IP}
   do
@@ -286,6 +292,7 @@ xray_rule()
     for IP in ${ALLOW_IPv6}
     do
       ip6tables -t mangle -${2} XRAY \
+        -m mark ! --mark ${MARK} \
         -d ${IP} -j RETURN
       ip6tables -t mangle -${2} XRAY_MASK \
         -d ${IP} -j RETURN
@@ -326,6 +333,7 @@ xray_rule()
     -j ACCEPT
   ip46tables -t mangle -${2} PREROUTING \
     -p tcp \
+    -m mark --mark ${MARK} \
     -m socket \
     -j DIVERT
 
@@ -353,6 +361,7 @@ xray_rule()
 xray_open()
 {
   mv ${0%/*}/disabled ${0%/*}/enabled && echo 'xray' > ${0%/*}/enabled
+
   generate_uid
   load_configuration
 
