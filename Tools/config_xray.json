@@ -1,0 +1,123 @@
+{
+  "log": {
+    "access": "none",
+    "error": "none",
+    "level": "none",
+    "dnsLog": false
+  },
+  "dns": {
+    "hosts": {
+      "sdk250": "127.0.0.1"
+    },
+    "servers": [{
+      "address": "1.1.1.1",
+      "port": 53,
+      "skipFallback": false
+    }, {
+      "tag": "dns-cn",
+      "address": "223.5.5.5",
+      "port": 53,
+      "domains": ["geosite:cn"],
+      "expectedIPs": ["geoip:cn"],
+      "skipFallback": true
+    }],
+    "disableFallback": false,
+    "disableCache": false,
+    "tag": "dns-global"
+  },
+  "routing": {
+    "domainStrategy": "AsIs",
+    "domainMatcher": "hybrid",
+    "rules": [{
+      "type": "field",
+      "inboundTag": ["dns-cn"],
+      "outboundTag": "out-direct",
+      "ruleTag": "DNS CN - OUT"
+    }, {
+      "type": "field",
+      "inboundTag": ["dns-global"],
+      "outboundTag": "out-global0",
+      "ruleTag": "DNS GLOBAL - OUT"
+    }, {
+      "type": "field",
+      "port": "53,853",
+      "inboundTag": ["in-global"],
+      "outboundTag": "out-dns",
+      "ruleTag": "DNS - HOOK"
+    }, {
+      "type": "field",
+      "ip": ["geoip:cn"],
+      "inboundTag": ["in-global"],
+      "outboundTag": "out-bd",
+      // 亦或国内流量直连
+      // "outboundTag": "out-direct",
+      "ruleTag": "CN IP - OUT"
+    }]
+  },
+  "policy": {},
+  "inbounds": [{
+    "tag": "in-global",
+    "listen": "::",
+    "port": 20801,
+    "protocol": "dokodemo-door",
+    "settings": {
+      "network": "tcp,udp",
+      "followRedirect": true
+    },
+    "streamSettings": {
+      "sockopt": {
+        "tproxy": "tproxy"
+      }
+    }
+  }],
+  "outbounds": [{
+    "tag": "out-global0",
+    "protocol": "vless",
+    "settings": {
+      "vnext": [{
+        "address": "0.0.0.0",
+        "port": 443,
+        "users": [{
+          "id": "29b3d2cd-cbb6-55d7-b418-4d656853e588",
+          "flow": "xtls-rprx-vision",
+          "encryption": "none"
+        }]
+      }]
+    },
+    "streamSettings": {
+      "network": "raw",
+      "rawSettings": {
+        "header": {
+          "type": "none"
+        }
+      },
+      "security": "reality",
+      "realitySettings": {
+        "show": false,
+        "serverName": "dm.toutiao.com",
+        "fingerprint": "chrome",
+        "password": "",
+        "shortId": "ffff",
+        "spiderX": "/robots.txt"
+      }
+    }
+  }, {
+    "tag": "out-bd",
+    "protocol": "http",
+    "settings": {
+      "servers": [{
+        "address": "127.0.0.1",
+        "port": 20802
+      }]
+    }
+  }, {
+    "tag": "out-direct",
+    "protocol": "freedom"
+  }, {
+    "tag": "out-block",
+    "protocol": "blackhole"
+  }, {
+    "tag": "out-dns",
+    "protocol": "dns"
+  }]
+}

@@ -1,0 +1,107 @@
+{
+  "log": {
+    "disabled": true,
+    "level": "info",
+    "timestamp": true
+  },
+  "dns": {
+    "servers": [{
+      "tag": "dns-global",
+      "type": "udp",
+      "server": "8.8.8.8",
+      "server_port": 53,
+      "detour": "out-global0"
+    }, {
+      "tag": "dns-cn",
+      "type": "udp",
+      "server": "223.5.5.5",
+      "server_port": 53
+    }],
+    "rules": [{
+      "rule_set": [
+        "geosite-geolocation-!cn"
+      ],
+      "server": "dns-global"
+    }, {
+      "rule_set": [
+        "geosite-cn"
+      ],
+      "server": "dns-cn"
+    }],
+    "independent_cache": false,
+    "final": "dns-cn",
+    "disable_cache": false
+  },
+  "inbounds": [{
+    "type": "tproxy",
+    "tag": "in-global",
+    "listen": "::",
+    "listen_port": 20801
+  }],
+  "outbounds": [{
+    "type": "vless",
+    "tag": "out-global0",
+    "server": "206.237.120.162",
+    "server_port": 443,
+    "uuid": "87ec9f9c-aa5a-66fa-865d-80304aad895a",
+    "flow": "xtls-rprx-vision",
+    "network": "tcp",
+    "tls": {
+      "enabled": true,
+      "disable_sni": false,
+      "insecure": false,
+      "server_name": "dm.toutiao.com",
+      "utls": {
+        "enabled": true,
+        "fingerprint": "chrome"
+      },
+      "reality": {
+        "enabled": true,
+        "public_key": "",
+        "short_id": "ffff"
+      }
+    },
+    "transport": {}
+  }, {
+    "type": "direct",
+    "tag": "out-direct"
+  }, {
+    "type": "block",
+    "tag": "out-block"
+  }],
+  "route": {
+    "rules": [{
+      "inbound": "in-global",
+      "action": "sniff",
+      "sniffer": ["dns"]
+    }, {
+      "inbound": "in-global",
+      "protocol": "dns",
+      "action": "hijack-dns"
+    }, {
+      "inbound": "in-global",
+      "rule_set": "geoip-cn",
+      "action": "route",
+      "outbound": "out-direct"
+    }],
+    "rule_set": [{
+      "type": "local",
+      "tag": "geosite-geolocation-!cn",
+      "format": "binary",
+      "path": "geosite-geolocation-!cn.srs"
+    }, {
+      "type": "local",
+      "tag": "geosite-cn",
+      "format": "binary",
+      "path": "geosite-cn.srs"
+    }, {
+      "type": "local",
+      "tag": "geoip-cn",
+      "format": "binary",
+      "path": "geoip-cn.srs"
+    }],
+    "default_domain_resolver": "dns-cn",
+    "auto_detect_interface": false,
+    "final": "out-global0"
+  }
+}
