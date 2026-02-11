@@ -1,6 +1,12 @@
 #!/bin/env sh
 # Powered by sdk250
 
+if [ "$(whoami)" != "root" ]
+then
+  echo "Must run as root!"
+  exit 1
+fi
+
 home_path="${0%/*}/Tools"
 
 # thread_socket 连接的IP(百度系)
@@ -97,36 +103,33 @@ generate_uid()
   find_uid "${ALLOW_UDP_PACKAGES}" "${ALLOW_UDP_UID}"
 
   # Saving configuration
-  local vars
-  vars=(
-    SERVER_ADDR
-    ALLOW_IP
-    ALLOW_IPv6
-    ENABLE_IPv6
-    PACKAGES
-    ALLOW_PACKAGES
-    ALLOW_UDP_PACKAGES
-    ALLOW_LOCAL_DNS
-    ALLOW_REMOTE_DNS
-    ALLOW_LOCAL_UDP
-    ALLOW_LOCAL_TCP
-    ALLOW_REMOTE_UDP
-    ALLOW_REMOTE_TCP
-    ALLOW_WLAN
-    ALLOW_LOOKUP
-    ALLOW_UID
-    ALLOW_PORT
-    TCP_PORT
-    TPROXY_PORT
-    MARK
-    TUNDEV
-    TABLE
-    PREF
-    TUN_ADDR
-    WAIT_TIME
-  )
+  local vars="SERVER_ADDR \
+      ALLOW_IP \
+      ALLOW_IPv6 \
+      ENABLE_IPv6 \
+      PACKAGES \
+      ALLOW_PACKAGES \
+      ALLOW_UDP_PACKAGES \
+      ALLOW_LOCAL_DNS \
+      ALLOW_REMOTE_DNS \
+      ALLOW_LOCAL_UDP \
+      ALLOW_LOCAL_TCP \
+      ALLOW_REMOTE_UDP \
+      ALLOW_REMOTE_TCP \
+      ALLOW_WLAN \
+      ALLOW_LOOKUP \
+      ALLOW_UID \
+      ALLOW_PORT \
+      TCP_PORT \
+      TPROXY_PORT \
+      MARK \
+      TUNDEV \
+      TABLE \
+      PREF \
+      TUN_ADDR \
+      WAIT_TIME"
 
-  for var in ${vars[@]}
+  for var in ${vars}
   do
     echo_v ${var}
   done
