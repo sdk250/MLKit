@@ -1,4 +1,4 @@
-#!/system/bin/sh
+#!/bin/env sh
 # Powered by sdk250
 
 home_path="${0%/*}/Tools"
@@ -17,7 +17,8 @@ ALLOW_IP="127.0.0.0/8 \
   255.255.255.255/32 \
   ${SERVER_ADDR}/32"
 
-ALLOW_IPv6="::1/128 fe80::/10"
+ALLOW_IPv6="::1/128 \
+  fe80::/10"
 
 ENABLE_IPv6=0
 
@@ -72,7 +73,7 @@ ALLOW_PORT=20822
 TCP_PORT=20802
 TPROXY_PORT=20801
 MARK=10086
-GID=10086
+GID=3004
 TUNDEV='tunDev'
 TABLE=101
 PREF=100
@@ -200,8 +201,8 @@ load_configuration()
 
 ip46tables()
 {
-  iptables ${@}
-  [ ${ENABLE_IPv6} == 1 ] && ip6tables ${@}
+  iptables -w ${WAIT_TIME} ${@}
+  [ ${ENABLE_IPv6} == 1 ] && ip6tables -w ${WAIT_TIME} ${@}
 }
 
 ip46route()
@@ -228,6 +229,18 @@ xray_rule()
   ip46tables -t mangle -${2} XRAY_MASK \
     -p udp --dport 67:68 \
     -j RETURN
+
+  local FOP="D"
+  if [ "${2}" == "A" ]
+  then
+    FOP="I"
+  fi
+  ip46tables -t filter -${FOP} INPUT \
+    -m mark --mark ${MARK} \
+    -j ACCEPT
+  ip46tables -t filter -${FOP} FORWARD \
+    -m mark --mark ${MARK} \
+    -j ACCEPT
 
   [ ${ALLOW_REMOTE_UDP} == 1 ] && \
     ip46tables -t mangle \
@@ -277,8 +290,10 @@ xray_rule()
   for IP in ${ALLOW_IP}
   do
     iptables -t mangle -${2} XRAY \
+      -w ${WAIT_TIME} \
       -d ${IP} -j RETURN
     iptables -t mangle -${2} XRAY_MASK \
+      -w ${WAIT_TIME} \
       -d ${IP} -j RETURN
   done
 
@@ -319,17 +334,6 @@ xray_rule()
       -p udp \
       -j DROP
 
-  ip46tables -t mangle -${2} DIVERT \
-    -p tcp \
-    -j MARK --set-mark ${MARK}
-  ip46tables -t mangle -${2} DIVERT \
-    -p tcp \
-    -j ACCEPT
-  ip46tables -t mangle -${2} PREROUTING \
-    -p tcp \
-    -m socket \
-    -j DIVERT
-
   for PROTO in tcp udp
   do
     ip46tables -t mangle -${2} XRAY \
@@ -341,7 +345,7 @@ xray_rule()
       -j MARK --set-mark ${MARK}
 
     ip46tables -t mangle \
-      -${2} PREROUTING \
+      -${FOP} PREROUTING \
       -w ${WAIT_TIME} \
       -p ${PROTO} \
       -j XRAY
@@ -351,6 +355,17 @@ xray_rule()
       -p ${PROTO} \
       -j XRAY_MASK
   done
+
+  ip46tables -t mangle -${2} DIVERT \
+    -p tcp \
+    -j MARK --set-mark ${MARK}
+  ip46tables -t mangle -${2} DIVERT \
+    -p tcp \
+    -j ACCEPT
+  ip46tables -t mangle -${FOP} PREROUTING \
+    -p tcp \
+    -m socket \
+    -j DIVERT
 }
 
 core_open()
@@ -363,20 +378,20 @@ core_open()
   generate_uid
   load_configuration
 
+  ulimit -n 32768
+
   if [ "${1}" == 'S' ]
   then
-    ${home_path}/busybox nohup \
-      ${home_path}/busybox setuidgid 0:${GID} \
-      ${home_path}/sing-box run \
+    ${home_path}/run ${GID} \
+      nohup ${home_path}/sing-box run \
       -c ${home_path}/config_sing-box.json \
       -D ${home_path} \
-      2>&1 > ${home_path}/core.log &
+      > ${home_path}/core.log 2>&1 &
   else
-    ${home_path}/busybox nohup \
-      ${home_path}/busybox setuidgid 0:${GID} \
-      ${home_path}/xray run \
+    ${home_path}/run ${GID} \
+      nohup ${home_path}/xray run \
       -c ${home_path}/config_xray.json \
-      2>&1 > ${home_path}/core.log &
+      > ${home_path}/core.log 2>&1 &
   fi
   ${home_path}/thread_socket \
     -p ${TCP_PORT} \
@@ -390,7 +405,7 @@ core_open()
   xray_rule add A xray ${TPROXY_PORT}
 
   [ ${ENABLE_IPv6} == 0 ] && \
-    ip -6 rule add unreachable pref ${PREF} # Deny IPV6
+    ip -6 rule add blackhole pref ${PREF} # Deny IPV6
 
   [ 'S' == "${1}" ] \
     && echo -e "\x1b[92mSing-box Done.\x1b[0m" \
@@ -408,10 +423,10 @@ core_close() {
 
   [ ${ENABLE_IPv6} == 0 ] && ip -6 rule del pref ${PREF} # Allow IPV6
 
-  killall thread_socket
+  pkill thread_socket
   [ 'S' == "${1}" ] \
-    && killall sing-box \
-    || killall xray
+    && pkill sing-box \
+    || pkill xray
 
   rm -f ${home_path}/.uid
   mv ${0%/*}/enabled ${0%/*}/disabled
@@ -452,7 +467,7 @@ tiny_close() {
   load_configuration
 
   ip -6 rule del pref ${PREF}
-  killall thread_socket
+  pkill thread_socket
 
   xray_rule del D tiny ${TCP_PORT}
   ip46tables -t mangle -X XRAY
