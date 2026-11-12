@@ -95,12 +95,13 @@ echo_v()
 
 generate_uid()
 {
-  echo -e "# This file is automatical" \
-  "genrated by \`mlk\`\n# DO NOT edit it\n" > ${home_path}/.uid
+  printf '%s\n%s\n\n' \
+    '# This file is automatical genrated by `mlk.sh`' \
+    '# DO NOT edit it' > ${home_path}/.uid
 
-  echo -n "ALLOW_ALL_UID=" >> ${home_path}/.uid
+  printf 'ALLOW_ALL_UID=' >> ${home_path}/.uid
   find_uid "${ALLOW_PACKAGES}" "${ALLOW_ALL_UID}"
-  echo -n "ALLOW_UDP_UID=" >> ${home_path}/.uid
+  printf 'ALLOW_UDP_UID=' >> ${home_path}/.uid
   find_uid "${ALLOW_UDP_PACKAGES}" "${ALLOW_UDP_UID}"
 
   # Saving configuration
@@ -145,7 +146,7 @@ find_uid()
       uid=$(awk "/^${PACKAGE} /{print \$2}" ${PACKAGES})
       if [ ! -z ${uid} ] && ! $(echo "${2}" | grep -q ${uid})
       then
-        echo -n "${uid} " >> ${home_path}/.uid
+        printf '%s ' "${uid}" >> ${home_path}/.uid
       fi
     done
   fi
@@ -395,7 +396,7 @@ clean_rules()
 # 开启过程中任一命令失败时（set -e 触发退出），撤销已做的改动，保持 disabled 状态
 rollback()
 {
-  echo -e "\x1b[91mStart failed, rolling back.\x1b[0m" >&2
+  printf '\033[91mStart failed, rolling back.\033[0m\n' >&2
   clean_rules ${1} ${2} > /dev/null 2>&1
   ip -6 rule del pref ${PREF} > /dev/null 2>&1 || true
   killall thread_socket > /dev/null 2>&1 || true
@@ -449,10 +450,10 @@ core_open()
   if [ 'S' = "${1}" ]
   then
     echo 'sing-box' > ${0%/*}/enabled
-    echo -e "\x1b[92mSing-box Done.\x1b[0m"
+    printf '\033[92mSing-box Done.\033[0m\n'
   else
     echo 'xray' > ${0%/*}/enabled
-    echo -e "\x1b[92mXray Done.\x1b[0m"
+    printf '\033[92mXray Done.\033[0m\n'
   fi
   exit 0
 }
@@ -509,7 +510,7 @@ tiny_open()
   mv ${0%/*}/disabled ${0%/*}/enabled
   echo 'thread_socket' > ${0%/*}/enabled
 
-  echo -e "\x1b[92mTiny Done.\x1b[0m"
+  printf '\033[92mTiny Done.\033[0m\n'
   exit 0
 }
 
