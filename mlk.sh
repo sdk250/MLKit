@@ -81,7 +81,7 @@ TCP_PORT=20802
 
 # x 模式下是否同时启动 thread_socket。
 # 仅当 xray 配置中有出站指向 127.0.0.1:${TCP_PORT} 时才需要，否则设为 0
-XRAY_THREAD_SOCKET=1
+XRAY_THREAD_SOCKET=0
 TPROXY_PORT=20801
 MARK=10086
 GID=3004
@@ -512,7 +512,7 @@ core_close()
     ip -6 rule del pref ${PREF} || true # Allow IPV6
   fi
 
-  killall thread_socket || true
+  [ "${XRAY_THREAD_SOCKET}" = 1 ] && killall thread_socket || true
   killall xray || true
 
   rm -f ${home_path}/.uid
