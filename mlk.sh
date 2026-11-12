@@ -1,8 +1,8 @@
-#!/bin/env sh
+#!/bin/sh
 # Powered by sdk250
 set -e
 
-if [ "$(whoami)" != "root" ]
+if [ "$(id -u)" != "0" ]
 then
   echo "Must run as root!"
   exit 1
@@ -398,9 +398,9 @@ rollback()
   echo -e "\x1b[91mStart failed, rolling back.\x1b[0m" >&2
   clean_rules ${1} ${2} > /dev/null 2>&1
   ip -6 rule del pref ${PREF} > /dev/null 2>&1 || true
-  pkill thread_socket > /dev/null 2>&1 || true
-  pkill sing-box > /dev/null 2>&1 || true
-  pkill xray > /dev/null 2>&1 || true
+  killall thread_socket > /dev/null 2>&1 || true
+  killall sing-box > /dev/null 2>&1 || true
+  killall xray > /dev/null 2>&1 || true
   rm -f ${home_path}/.uid
 }
 
@@ -468,12 +468,12 @@ core_close()
     ip -6 rule del pref ${PREF} || true # Allow IPV6
   fi
 
-  pkill thread_socket || true
+  killall thread_socket || true
   if [ 'S' == "${1}" ]
   then
-    pkill sing-box || true
+    killall sing-box || true
   else
-    pkill xray || true
+    killall xray || true
   fi
 
   rm -f ${home_path}/.uid
@@ -521,7 +521,7 @@ tiny_close()
   load_configuration
 
   ip -6 rule del pref ${PREF} || true
-  pkill thread_socket || true
+  killall thread_socket || true
 
   clean_rules tiny ${TCP_PORT}
 
