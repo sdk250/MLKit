@@ -206,7 +206,7 @@ load_configuration()
 ip46tables()
 {
   iptables -w ${WAIT_TIME} ${@}
-  if [ ${ENABLE_IPv6} == 1 ]
+  if [ "${ENABLE_IPv6}" = 1 ]
   then
     ip6tables -w ${WAIT_TIME} ${@}
   fi
@@ -215,7 +215,7 @@ ip46tables()
 ip46route()
 {
   ip -4 route ${@}
-  if [ ${ENABLE_IPv6} == 1 ]
+  if [ "${ENABLE_IPv6}" = 1 ]
   then
     ip -6 route ${@}
   fi
@@ -224,7 +224,7 @@ ip46route()
 ip46rule()
 {
   ip -4 rule ${@}
-  if [ ${ENABLE_IPv6} == 1 ]
+  if [ "${ENABLE_IPv6}" = 1 ]
   then
     ip -6 rule ${@}
   fi
@@ -244,7 +244,7 @@ xray_rule()
     -j RETURN
 
   local FOP="D"
-  if [ "${2}" == "A" ]
+  if [ "${2}" = "A" ]
   then
     FOP="I"
   fi
@@ -255,37 +255,37 @@ xray_rule()
     -m mark --mark ${MARK} \
     -j ACCEPT
 
-  [ ${ALLOW_REMOTE_UDP} == 1 ] && \
+  [ "${ALLOW_REMOTE_UDP}" = 1 ] && \
     ip46tables -t mangle \
       -${2} XRAY \
       -p udp ! --dport 53 \
       -m mark ! --mark ${MARK} \
       -j RETURN
-  [ ${ALLOW_LOCAL_UDP} == 1 ] && \
+  [ "${ALLOW_LOCAL_UDP}" = 1 ] && \
     ip46tables -t mangle \
       -${2} XRAY_MASK \
       -p udp ! --dport 53 \
       -j RETURN
-  [ ${ALLOW_REMOTE_TCP} == 1 ] && \
+  [ "${ALLOW_REMOTE_TCP}" = 1 ] && \
     ip46tables -t mangle \
       -${2} XRAY \
       -p tcp \
       -m mark ! --mark ${MARK} \
       -j RETURN
-  [ ${ALLOW_LOCAL_TCP} == 1 ] && \
+  [ "${ALLOW_LOCAL_TCP}" = 1 ] && \
     ip46tables -t mangle \
       -${2} XRAY_MASK \
       -p tcp \
       -j RETURN
 
-  if [ ${ALLOW_REMOTE_DNS} == 1 ] || [ "${3}" == 'tiny' ]
+  if [ "${ALLOW_REMOTE_DNS}" = 1 ] || [ "${3}" = 'tiny' ]
   then
     ip46tables -t mangle -${2} XRAY \
       -p udp --dport 53 \
       -m mark ! --mark ${MARK} \
       -j RETURN
   fi
-  if [ ${ALLOW_LOCAL_DNS} == 1 ] || [ "${3}" == 'tiny' ]
+  if [ "${ALLOW_LOCAL_DNS}" = 1 ] || [ "${3}" = 'tiny' ]
   then
     ip46tables -t mangle -${2} XRAY_MASK \
       -p udp --dport 53 \
@@ -310,7 +310,7 @@ xray_rule()
       -d ${IP} -j RETURN
   done
 
-  if [ ${ENABLE_IPv6} == 1 ]
+  if [ "${ENABLE_IPv6}" = 1 ]
   then
     for IP in ${ALLOW_IPv6}
     do
@@ -321,7 +321,7 @@ xray_rule()
     done
   fi
 
-  [ ${ALLOW_WLAN} == 1 ] && \
+  [ "${ALLOW_WLAN}" = 1 ] && \
     ip46tables -t mangle -${2} OUTPUT \
       -o wlan+ \
       -j ACCEPT
@@ -342,7 +342,7 @@ xray_rule()
         -j RETURN
   done
 
-  [ "${3}" == 'tiny' ] && \
+  [ "${3}" = 'tiny' ] && \
     ip46tables -t mangle -${2} XRAY_MASK \
       -p udp \
       -j DROP
@@ -419,12 +419,12 @@ core_open()
   ip46tables -t mangle -N DIVERT
   xray_rule add A xray ${TPROXY_PORT}
 
-  if [ ${ENABLE_IPv6} == 0 ]
+  if [ "${ENABLE_IPv6}" = 0 ]
   then
     ip -6 rule add blackhole pref ${PREF} # Deny IPV6
   fi
 
-  if [ "${1}" == 'S' ]
+  if [ "${1}" = 'S' ]
   then
     ${home_path}/run ${GID} \
       nohup ${home_path}/sing-box run \
@@ -446,7 +446,7 @@ core_open()
   # 全部成功后才记录状态
   trap - EXIT
   mv ${0%/*}/disabled ${0%/*}/enabled
-  if [ 'S' == "${1}" ]
+  if [ 'S' = "${1}" ]
   then
     echo 'sing-box' > ${0%/*}/enabled
     echo -e "\x1b[92mSing-box Done.\x1b[0m"
@@ -463,13 +463,13 @@ core_close()
 
   clean_rules xray ${TPROXY_PORT}
 
-  if [ ${ENABLE_IPv6} == 0 ]
+  if [ "${ENABLE_IPv6}" = 0 ]
   then
     ip -6 rule del pref ${PREF} || true # Allow IPV6
   fi
 
   killall thread_socket || true
-  if [ 'S' == "${1}" ]
+  if [ 'S' = "${1}" ]
   then
     killall sing-box || true
   else
@@ -579,7 +579,7 @@ then
     status=$(cat ${0%/*}/enabled)
     case ${1} in
       't')
-        if [ 'thread_socket' == ${status} ]
+        if [ 'thread_socket' = "${status}" ]
         then
           tiny_close
           exit 0
@@ -589,7 +589,7 @@ then
         fi
         ;;
       'x')
-        if [ 'xray' == ${status} ]
+        if [ 'xray' = "${status}" ]
         then
           core_close 'X'
           exit 0
@@ -599,7 +599,7 @@ then
         fi
         ;;
       'S')
-        if [ 'sing-box' == ${status} ]
+        if [ 'sing-box' = "${status}" ]
         then
           core_close "${1}"
           exit 0
