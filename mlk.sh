@@ -443,7 +443,6 @@ core_open()
   echo 'xray' > ${0%/*}/enabled
 
   printf '\033[92mXray Done.\033[0m\n'
-  exit 0
 }
 
 core_close()
@@ -494,7 +493,6 @@ tiny_open()
   echo 'thread_socket' > ${0%/*}/enabled
 
   printf '\033[92mTiny Done.\033[0m\n'
-  exit 0
 }
 
 tiny_close()
@@ -526,69 +524,55 @@ close()
   esac
 }
 
-if [ -f ${0%/*}/disabled ]
+usage()
+{
+  echo "Usage: ${0} <t|x|s>"
+  echo '  t  启动/关闭 thread_socket 模式'
+  echo '  x  启动/关闭 xray 模式'
+  echo '  s  查看运行状态'
+  exit 2
+}
+
+[ ${#} -eq 1 ] || usage
+
+# 当前状态：enabled 文件中记录的核心名；disabled 时为空
+if [ -f ${0%/*}/enabled ]
 then
-  if [ ${#} -eq 1 ]
-  then
-    case ${1} in
-      't')
-        tiny_open
-        ;;
-      'x')
-        core_open
-        ;;
-      's')
-        echo 'MLKit is stopped.'
-        exit 0
-        ;;
-      *)
-        echo "Undefined core."
-        exit -1
-    esac
-  else
-    echo "Need a parameter of core."
-    exit -3
-  fi
-elif [ -f ${0%/*}/enabled ]
+  status=$(cat ${0%/*}/enabled)
+elif [ -f ${0%/*}/disabled ]
 then
-  if [ ${#} -le 2 ]
-  then
-    status=$(cat ${0%/*}/enabled)
-    case ${1} in
-      't')
-        if [ 'thread_socket' = "${status}" ]
-        then
-          tiny_close
-          exit 0
-        else
-          close "${status}"
-          tiny_open
-        fi
-        ;;
-      'x')
-        if [ 'xray' = "${status}" ]
-        then
-          core_close
-          exit 0
-        else
-          close "${status}"
-          core_open
-        fi
-        ;;
-      's')
-        echo "MLKit is running. (${status})"
-        exit 0
-        ;;
-      *)
-        echo "Core selected is invalid."
-    esac
-  else
-    echo "Need a parameter of core."
-    exit -3
-  fi
+  status=''
 else
-  echo "Undefined error."
+  echo "Undefined error: neither enabled nor disabled exists."
   exit 1
 fi
-exit 127
 
+# "<当前状态>:<参数>"
+#   相同核心再次执行 → 关闭；其他核心在运行 → 先关闭再切换；未运行 → 直接启动
+case "${status}:${1}" in
+  *:s)
+    [ -n "${status}" ] \
+      && echo "MLKit is running. (${status})" \
+      || echo 'MLKit is stopped.'
+    ;;
+  thread_socket:t | xray:x)
+    close "${status}"
+    ;;
+  :t)
+    tiny_open
+    ;;
+  :x)
+    core_open
+    ;;
+  *:t)
+    close "${status}"
+    tiny_open
+    ;;
+  *:x)
+    close "${status}"
+    core_open
+    ;;
+  *)
+    usage
+    ;;
+esac
