@@ -391,17 +391,37 @@ clean_rules()
   ip46tables -t mangle -X DIVERT || true
 }
 
+# 开启过程中任一命令失败时（set -e 触发退出），撤销已做的改动，保持 disabled 状态
+rollback()
+{
+  echo -e "\x1b[91mStart failed, rolling back.\x1b[0m" >&2
+  clean_rules ${1} ${2} > /dev/null 2>&1
+  ip -6 rule del pref ${PREF} > /dev/null 2>&1 || true
+  pkill thread_socket > /dev/null 2>&1 || true
+  pkill sing-box > /dev/null 2>&1 || true
+  pkill xray > /dev/null 2>&1 || true
+  rm -f ${home_path}/.uid
+}
+
 core_open()
 {
-  mv ${0%/*}/disabled ${0%/*}/enabled
-  [ 'S' == "${1}" ] \
-    && echo 'sing-box' > ${0%/*}/enabled \
-    || echo 'xray' > ${0%/*}/enabled
-
   generate_uid
   load_configuration
 
   ulimit -n 32768
+
+  trap "rollback xray ${TPROXY_PORT}" EXIT
+
+  # 先建链和规则：-N 失败（链已存在，说明有残留规则）会立即退出并回滚
+  ip46tables -t mangle -N XRAY
+  ip46tables -t mangle -N XRAY_MASK
+  ip46tables -t mangle -N DIVERT
+  xray_rule add A xray ${TPROXY_PORT}
+
+  if [ ${ENABLE_IPv6} == 0 ]
+  then
+    ip -6 rule add blackhole pref ${PREF} # Deny IPV6
+  fi
 
   if [ "${1}" == 'S' ]
   then
@@ -422,17 +442,17 @@ core_open()
     -r ${SERVER_ADDR} \
     -d > ${home_path}/sock.log 2>&1
 
-  ip46tables -t mangle -N XRAY
-  ip46tables -t mangle -N XRAY_MASK
-  ip46tables -t mangle -N DIVERT
-  xray_rule add A xray ${TPROXY_PORT}
-
-  [ ${ENABLE_IPv6} == 0 ] && \
-    ip -6 rule add blackhole pref ${PREF} # Deny IPV6
-
-  [ 'S' == "${1}" ] \
-    && echo -e "\x1b[92mSing-box Done.\x1b[0m" \
-    || echo -e "\x1b[92mXray Done.\x1b[0m"
+  # 全部成功后才记录状态
+  trap - EXIT
+  mv ${0%/*}/disabled ${0%/*}/enabled
+  if [ 'S' == "${1}" ]
+  then
+    echo 'sing-box' > ${0%/*}/enabled
+    echo -e "\x1b[92mSing-box Done.\x1b[0m"
+  else
+    echo 'xray' > ${0%/*}/enabled
+    echo -e "\x1b[92mXray Done.\x1b[0m"
+  fi
   exit 0
 }
 
@@ -459,17 +479,22 @@ core_close()
   mv ${0%/*}/enabled ${0%/*}/disabled
 }
 
-tiny_open() {
+tiny_open()
+{
   echo 1 > /proc/sys/net/ipv4/ip_forward
   echo 1 > /proc/sys/net/ipv4/ip_dynaddr
-
-  mv ${0%/*}/disabled ${0%/*}/enabled && \
-    echo 'thread_socket' > ${0%/*}/enabled
 
   generate_uid
   load_configuration
 
   # create_tun
+
+  trap "rollback tiny ${TCP_PORT}" EXIT
+
+  ip46tables -t mangle -N XRAY
+  ip46tables -t mangle -N XRAY_MASK
+  ip46tables -t mangle -N DIVERT
+  xray_rule add A tiny ${TCP_PORT}
 
   ip -6 rule add unreachable pref ${PREF}
   ${home_path}/thread_socket \
@@ -478,10 +503,10 @@ tiny_open() {
     -r ${SERVER_ADDR} \
     -d > ${home_path}/sock.log 2>&1
 
-  ip46tables -t mangle -N XRAY
-  ip46tables -t mangle -N XRAY_MASK
-  ip46tables -t mangle -N DIVERT
-  xray_rule add A tiny ${TCP_PORT}
+  # 全部成功后才记录状态
+  trap - EXIT
+  mv ${0%/*}/disabled ${0%/*}/enabled
+  echo 'thread_socket' > ${0%/*}/enabled
 
   echo -e "\x1b[92mTiny Done.\x1b[0m"
   exit 0
