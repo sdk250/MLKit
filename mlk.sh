@@ -403,7 +403,6 @@ rollback()
   clean_rules ${1} ${2} > /dev/null 2>&1
   ip -6 rule del pref ${PREF} > /dev/null 2>&1 || true
   killall thread_socket > /dev/null 2>&1 || true
-  killall sing-box > /dev/null 2>&1 || true
   killall xray > /dev/null 2>&1 || true
   rm -f ${home_path}/.uid
 }
@@ -428,19 +427,10 @@ core_open()
     ip -6 rule add blackhole pref ${PREF} # Deny IPV6
   fi
 
-  if [ "${1}" = 'S' ]
-  then
-    ${home_path}/run ${GID} \
-      nohup ${home_path}/sing-box run \
-      -c ${home_path}/config_sing-box.json \
-      -D ${home_path} \
-      > ${home_path}/core.log 2>&1 &
-  else
-    ${home_path}/run ${GID} \
-      nohup ${home_path}/xray run \
-      -c ${home_path}/config_xray.json \
-      > ${home_path}/core.log 2>&1 &
-  fi
+  ${home_path}/run ${GID} \
+    nohup ${home_path}/xray run \
+    -c ${home_path}/config_xray.json \
+    > ${home_path}/core.log 2>&1 &
   ${home_path}/thread_socket \
     -p ${TCP_PORT} \
     -u ${ALLOW_UID} \
@@ -450,14 +440,9 @@ core_open()
   # 全部成功后才记录状态
   trap - EXIT
   mv ${0%/*}/disabled ${0%/*}/enabled
-  if [ 'S' = "${1}" ]
-  then
-    echo 'sing-box' > ${0%/*}/enabled
-    printf '\033[92mSing-box Done.\033[0m\n'
-  else
-    echo 'xray' > ${0%/*}/enabled
-    printf '\033[92mXray Done.\033[0m\n'
-  fi
+  echo 'xray' > ${0%/*}/enabled
+
+  printf '\033[92mXray Done.\033[0m\n'
   exit 0
 }
 
@@ -473,12 +458,7 @@ core_close()
   fi
 
   killall thread_socket || true
-  if [ 'S' = "${1}" ]
-  then
-    killall sing-box || true
-  else
-    killall xray || true
-  fi
+  killall xray || true
 
   rm -f ${home_path}/.uid
   mv ${0%/*}/enabled ${0%/*}/disabled
@@ -539,10 +519,7 @@ close() {
       tiny_close
       ;;
     'xray')
-      core_close 'X'
-      ;;
-    'sing-box')
-      core_close 'S'
+      core_close
       ;;
     *)
       echo 'Undefined error.'
@@ -559,10 +536,7 @@ then
         tiny_open
         ;;
       'x')
-        core_open 'X'
-        ;;
-      'S')
-        core_open "${1}"
+        core_open
         ;;
       's')
         echo 'MLKit is stopped.'
@@ -595,21 +569,11 @@ then
       'x')
         if [ 'xray' = "${status}" ]
         then
-          core_close 'X'
+          core_close
           exit 0
         else
           close
-          core_open 'X'
-        fi
-        ;;
-      'S')
-        if [ 'sing-box' = "${status}" ]
-        then
-          core_close "${1}"
-          exit 0
-        else
-          close
-          core_open "${1}"
+          core_open
         fi
         ;;
       's')
