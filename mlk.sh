@@ -513,17 +513,16 @@ tiny_close()
   mv ${0%/*}/enabled ${0%/*}/disabled
 }
 
-close() {
-  case $(cat ${0%/*}/enabled) in
-    'thread_socket')
-      tiny_close
-      ;;
-    'xray')
-      core_close
-      ;;
+# 按状态文件中记录的核心关闭
+close()
+{
+  case "${1}" in
+    'thread_socket') tiny_close ;;
+    'xray')          core_close ;;
     *)
-      echo 'Undefined error.'
+      echo "Unknown status: ${1}"
       exit 127
+      ;;
   esac
 }
 
@@ -562,7 +561,7 @@ then
           tiny_close
           exit 0
         else
-          close
+          close "${status}"
           tiny_open
         fi
         ;;
@@ -572,7 +571,7 @@ then
           core_close
           exit 0
         else
-          close
+          close "${status}"
           core_open
         fi
         ;;
