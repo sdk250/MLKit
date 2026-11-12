@@ -424,7 +424,7 @@ core_open()
 
   if [ "${ENABLE_IPv6}" = 0 ]
   then
-    ip -6 rule add blackhole pref ${PREF} # Deny IPV6
+    ip -6 rule add unreachable pref ${PREF} # Deny IPV6
   fi
 
   ${home_path}/run ${GID} \
