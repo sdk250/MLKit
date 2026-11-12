@@ -144,7 +144,7 @@ find_uid()
     for PACKAGE in ${1}
     do
       uid=$(awk "/^${PACKAGE} /{print \$2}" ${PACKAGES})
-      if [ ! -z ${uid} ] && ! $(echo "${2}" | grep -q ${uid})
+      if [ -n "${uid}" ] && ! echo "${2}" | grep -qw "${uid}"
       then
         printf '%s ' "${uid}" >> ${home_path}/.uid
       fi
