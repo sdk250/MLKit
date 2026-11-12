@@ -420,7 +420,7 @@ core_open()
     -p ${TCP_PORT} \
     -u ${ALLOW_UID} \
     -r ${SERVER_ADDR} \
-    -d &> ${home_path}/sock.log
+    -d > ${home_path}/sock.log 2>&1
 
   ip46tables -t mangle -N XRAY
   ip46tables -t mangle -N XRAY_MASK
@@ -476,7 +476,7 @@ tiny_open() {
     -p ${TCP_PORT} \
     -u 0 \
     -r ${SERVER_ADDR} \
-    -d &> ${home_path}/sock.log
+    -d > ${home_path}/sock.log 2>&1
 
   ip46tables -t mangle -N XRAY
   ip46tables -t mangle -N XRAY_MASK
