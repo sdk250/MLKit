@@ -175,6 +175,9 @@ find_configuration()
 
 load_configuration()
 {
+  # .uid 不存在时（例如被手动删除）保留脚本中的默认值，避免变量被清空
+  [ -f ${home_path}/.uid ] || return 0
+
   SERVER_ADDR="$(find_configuration SERVER_ADDR)"
   ALLOW_IP="$(find_configuration ALLOW_IP)"
   ALLOW_IPv6="$(find_configuration ALLOW_IPv6)"
