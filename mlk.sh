@@ -1,5 +1,6 @@
 #!/bin/env sh
 # Powered by sdk250
+set -e
 
 if [ "$(whoami)" != "root" ]
 then
