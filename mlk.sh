@@ -428,7 +428,7 @@ core_open()
   fi
 
   ${home_path}/run ${GID} \
-    nohup ${home_path}/xray run \
+    ${home_path}/xray run \
     -c ${home_path}/config_xray.json \
     > ${home_path}/core.log 2>&1 &
   ${home_path}/thread_socket \
