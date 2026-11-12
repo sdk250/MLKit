@@ -205,19 +205,28 @@ load_configuration()
 ip46tables()
 {
   iptables -w ${WAIT_TIME} ${@}
-  [ ${ENABLE_IPv6} == 1 ] && ip6tables -w ${WAIT_TIME} ${@}
+  if [ ${ENABLE_IPv6} == 1 ]
+  then
+    ip6tables -w ${WAIT_TIME} ${@}
+  fi
 }
 
 ip46route()
 {
   ip -4 route ${@}
-  [ ${ENABLE_IPv6} == 1 ] && ip -6 route ${@}
+  if [ ${ENABLE_IPv6} == 1 ]
+  then
+    ip -6 route ${@}
+  fi
 }
 
 ip46rule()
 {
   ip -4 rule ${@}
-  [ ${ENABLE_IPv6} == 1 ] && ip -6 rule ${@}
+  if [ ${ENABLE_IPv6} == 1 ]
+  then
+    ip -6 rule ${@}
+  fi
 }
 
 xray_rule()
