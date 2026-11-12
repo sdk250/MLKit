@@ -380,6 +380,17 @@ xray_rule()
     -j DIVERT
 }
 
+# 尽力清理：规则/进程可能本来就不存在（例如断电重启后），
+# 任何一步失败都不能中断脚本，因此每条命令都以 `|| true` 结尾。
+# 以 `|| true` 方式调用 xray_rule 时，其内部的 set -e 不生效，每条删除都会被尝试。
+clean_rules()
+{
+  xray_rule del D ${1} ${2} || true
+  ip46tables -t mangle -X XRAY || true
+  ip46tables -t mangle -X XRAY_MASK || true
+  ip46tables -t mangle -X DIVERT || true
+}
+
 core_open()
 {
   mv ${0%/*}/disabled ${0%/*}/enabled
@@ -425,20 +436,24 @@ core_open()
   exit 0
 }
 
-core_close() {
+core_close()
+{
   load_configuration
 
-  xray_rule del D xray ${TPROXY_PORT}
-  ip46tables -t mangle -X XRAY
-  ip46tables -t mangle -X XRAY_MASK
-  ip46tables -t mangle -X DIVERT
+  clean_rules xray ${TPROXY_PORT}
 
-  [ ${ENABLE_IPv6} == 0 ] && ip -6 rule del pref ${PREF} # Allow IPV6
+  if [ ${ENABLE_IPv6} == 0 ]
+  then
+    ip -6 rule del pref ${PREF} || true # Allow IPV6
+  fi
 
-  pkill thread_socket
-  [ 'S' == "${1}" ] \
-    && pkill sing-box \
-    || pkill xray
+  pkill thread_socket || true
+  if [ 'S' == "${1}" ]
+  then
+    pkill sing-box || true
+  else
+    pkill xray || true
+  fi
 
   rm -f ${home_path}/.uid
   mv ${0%/*}/enabled ${0%/*}/disabled
@@ -472,19 +487,17 @@ tiny_open() {
   exit 0
 }
 
-tiny_close() {
+tiny_close()
+{
   echo 0 > /proc/sys/net/ipv4/ip_forward
   echo 0 > /proc/sys/net/ipv4/ip_dynaddr
 
   load_configuration
 
-  ip -6 rule del pref ${PREF}
-  pkill thread_socket
+  ip -6 rule del pref ${PREF} || true
+  pkill thread_socket || true
 
-  xray_rule del D tiny ${TCP_PORT}
-  ip46tables -t mangle -X XRAY
-  ip46tables -t mangle -X XRAY_MASK
-  ip46tables -t mangle -X DIVERT
+  clean_rules tiny ${TCP_PORT}
 
   rm -f ${home_path}/.uid
   mv ${0%/*}/enabled ${0%/*}/disabled
