@@ -316,19 +316,19 @@ xray_rule()
       -o wlan+ \
       -j ACCEPT
 
-  for UID in ${ALLOW_ALL_UID}
+  for U in ${ALLOW_ALL_UID}
   do
-    [ -z ${UID} ] || \
+    [ -z ${U} ] || \
       ip46tables -t mangle -${2} XRAY_MASK \
-        -m owner --uid ${UID} \
+        -m owner --uid ${U} \
         -j RETURN
   done
-  for UID in ${ALLOW_UDP_UID}
+  for U in ${ALLOW_UDP_UID}
   do
-    [ -z ${UID} ] || \
+    [ -z ${U} ] || \
       ip46tables -t mangle -${2} XRAY_MASK \
         -p udp \
-        -m owner --uid ${UID} \
+        -m owner --uid ${U} \
         -j RETURN
   done
 
