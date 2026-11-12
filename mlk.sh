@@ -78,6 +78,10 @@ ALLOW_UID=0
 
 ALLOW_PORT=20822
 TCP_PORT=20802
+
+# x 模式下是否同时启动 thread_socket。
+# 仅当 xray 配置中有出站指向 127.0.0.1:${TCP_PORT} 时才需要，否则设为 0
+XRAY_THREAD_SOCKET=1
 TPROXY_PORT=20801
 MARK=10086
 GID=3004
@@ -396,12 +400,46 @@ clean_rules()
   ip46tables -t mangle -X DIVERT || true
 }
 
+# 记录当前正在执行的启动步骤，失败时由 rollback 打印，便于排错
+STEP=''
+CORE_PID=''
+step()
+{
+  STEP="${*}"
+}
+
+# 启动前检查程序是否存在，给出明确的错误
+require()
+{
+  if [ ! -x "${1}" ]
+  then
+    printf '\033[91m%s: not found or not executable\033[0m\n' "${1}" >&2
+    return 1
+  fi
+}
+
 # 开启过程中任一命令失败时（set -e 触发退出），撤销已做的改动，保持 disabled 状态
 rollback()
 {
-  printf '\033[91mStart failed, rolling back.\033[0m\n' >&2
+  # 必须是第一条命令：$? 为触发退出的那条命令的返回值
+  local rc=${?}
+
+  printf '\033[91mStart failed (exit code %s) at step: %s\033[0m\n' "${rc}" "${STEP}" >&2
+  case "${STEP}" in
+    *thread_socket*)
+      echo "--- ${home_path}/sock.log:" >&2
+      tail -n 5 ${home_path}/sock.log >&2 || true
+      ;;
+  esac
+  echo 'Rolling back.' >&2
+
   clean_rules ${1} ${2} > /dev/null 2>&1
   ip -6 rule del pref ${PREF} > /dev/null 2>&1 || true
+  # 按 PID 结束刚启动的内核：刚 fork 时进程名可能还不是 xray，单靠 killall 会漏掉
+  if [ -n "${CORE_PID}" ]
+  then
+    kill ${CORE_PID} > /dev/null 2>&1 || true
+  fi
   killall thread_socket > /dev/null 2>&1 || true
   killall xray > /dev/null 2>&1 || true
   rm -f ${home_path}/.uid
@@ -409,6 +447,13 @@ rollback()
 
 core_open()
 {
+  require ${home_path}/run
+  require ${home_path}/xray
+  if [ "${XRAY_THREAD_SOCKET}" = 1 ]
+  then
+    require ${home_path}/thread_socket
+  fi
+
   generate_uid
   load_configuration
 
@@ -417,25 +462,36 @@ core_open()
   trap "rollback xray ${TPROXY_PORT}" EXIT
 
   # 先建链和规则：-N 失败（链已存在，说明有残留规则）会立即退出并回滚
+  step 'create iptables chains (already exist? run close first)'
   ip46tables -t mangle -N XRAY
   ip46tables -t mangle -N XRAY_MASK
   ip46tables -t mangle -N DIVERT
+
+  step 'add ip rules / routes / iptables rules'
   xray_rule add A xray ${TPROXY_PORT}
 
   if [ "${ENABLE_IPv6}" = 0 ]
   then
+    step 'deny IPv6: ip -6 rule add unreachable (busybox ip? install ip-full)'
     ip -6 rule add unreachable pref ${PREF} # Deny IPV6
   fi
 
+  step 'start xray'
   ${home_path}/run ${GID} \
     ${home_path}/xray run \
     -c ${home_path}/config_xray.json \
     > ${home_path}/core.log 2>&1 &
-  ${home_path}/thread_socket \
-    -p ${TCP_PORT} \
-    -u ${ALLOW_UID} \
-    -r ${SERVER_ADDR} \
-    -d > ${home_path}/sock.log 2>&1
+  CORE_PID=${!}
+
+  if [ "${XRAY_THREAD_SOCKET}" = 1 ]
+  then
+    step 'start thread_socket'
+    ${home_path}/thread_socket \
+      -p ${TCP_PORT} \
+      -u ${ALLOW_UID} \
+      -r ${SERVER_ADDR} \
+      -d > ${home_path}/sock.log 2>&1
+  fi
 
   # 全部成功后才记录状态
   trap - EXIT
@@ -465,6 +521,8 @@ core_close()
 
 tiny_open()
 {
+  require ${home_path}/thread_socket
+
   echo 1 > /proc/sys/net/ipv4/ip_forward
   echo 1 > /proc/sys/net/ipv4/ip_dynaddr
 
@@ -475,12 +533,18 @@ tiny_open()
 
   trap "rollback tiny ${TCP_PORT}" EXIT
 
+  step 'create iptables chains (already exist? run close first)'
   ip46tables -t mangle -N XRAY
   ip46tables -t mangle -N XRAY_MASK
   ip46tables -t mangle -N DIVERT
+
+  step 'add ip rules / routes / iptables rules'
   xray_rule add A tiny ${TCP_PORT}
 
+  step 'deny IPv6: ip -6 rule add unreachable (busybox ip? install ip-full)'
   ip -6 rule add unreachable pref ${PREF}
+
+  step 'start thread_socket'
   ${home_path}/thread_socket \
     -p ${TCP_PORT} \
     -u 0 \
