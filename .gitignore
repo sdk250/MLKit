@@ -1,0 +1,5 @@
+*.dat
+*.log
+run
+xray
+thread_socket
