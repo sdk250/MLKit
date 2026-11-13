@@ -10,7 +10,7 @@ fi
 
 home_path="${0%/*}/Tools"
 
-# thread_socket 连接的IP(百度系)
+# esocket 连接的IP(百度系)
 SERVER_ADDR='110.242.70.68'
 
 # Allow IP
@@ -79,7 +79,7 @@ ALLOW_UID=0
 ALLOW_PORT=20822
 TCP_PORT=20802
 
-# x 模式下是否同时启动 thread_socket。
+# x 模式下是否同时启动 esocket。
 # 仅当 xray 配置中有出站指向 127.0.0.1:${TCP_PORT} 时才需要，否则设为 0
 XRAY_THREAD_SOCKET=0
 TPROXY_PORT=20801
@@ -426,7 +426,7 @@ rollback()
 
   printf '\033[91mStart failed (exit code %s) at step: %s\033[0m\n' "${rc}" "${STEP}" >&2
   case "${STEP}" in
-    *thread_socket*)
+    *esocket*)
       echo "--- ${home_path}/sock.log:" >&2
       tail -n 5 ${home_path}/sock.log >&2 || true
       ;;
@@ -440,7 +440,7 @@ rollback()
   then
     kill ${CORE_PID} > /dev/null 2>&1 || true
   fi
-  killall thread_socket > /dev/null 2>&1 || true
+  killall esocket > /dev/null 2>&1 || true
   killall xray > /dev/null 2>&1 || true
   rm -f ${home_path}/.uid
 }
@@ -451,7 +451,7 @@ core_open()
   require ${home_path}/xray
   if [ "${XRAY_THREAD_SOCKET}" = 1 ]
   then
-    require ${home_path}/thread_socket
+    require ${home_path}/esocket
   fi
 
   generate_uid
@@ -485,8 +485,8 @@ core_open()
 
   if [ "${XRAY_THREAD_SOCKET}" = 1 ]
   then
-    step 'start thread_socket'
-    ${home_path}/thread_socket \
+    step 'start esocket'
+    ${home_path}/esocket \
       -p ${TCP_PORT} \
       -u ${ALLOW_UID} \
       -r ${SERVER_ADDR} \
@@ -512,7 +512,7 @@ core_close()
     ip -6 rule del pref ${PREF} || true # Allow IPV6
   fi
 
-  [ "${XRAY_THREAD_SOCKET}" = 1 ] && killall thread_socket || true
+  [ "${XRAY_THREAD_SOCKET}" = 1 ] && killall esocket || true
   killall xray || true
 
   rm -f ${home_path}/.uid
@@ -521,7 +521,7 @@ core_close()
 
 tiny_open()
 {
-  require ${home_path}/thread_socket
+  require ${home_path}/esocket
 
   echo 1 > /proc/sys/net/ipv4/ip_forward
   echo 1 > /proc/sys/net/ipv4/ip_dynaddr
@@ -544,8 +544,8 @@ tiny_open()
   step 'deny IPv6: ip -6 rule add unreachable (busybox ip? install ip-full)'
   ip -6 rule add unreachable pref ${PREF}
 
-  step 'start thread_socket'
-  ${home_path}/thread_socket \
+  step 'start esocket'
+  ${home_path}/esocket \
     -p ${TCP_PORT} \
     -u 0 \
     -r ${SERVER_ADDR} \
@@ -554,7 +554,7 @@ tiny_open()
   # 全部成功后才记录状态
   trap - EXIT
   mv ${0%/*}/disabled ${0%/*}/enabled
-  echo 'thread_socket' > ${0%/*}/enabled
+  echo 'esocket' > ${0%/*}/enabled
 
   printf '\033[92mTiny Done.\033[0m\n'
 }
@@ -567,7 +567,7 @@ tiny_close()
   load_configuration
 
   ip -6 rule del pref ${PREF} || true
-  killall thread_socket || true
+  killall esocket || true
 
   clean_rules tiny ${TCP_PORT}
 
@@ -579,7 +579,7 @@ tiny_close()
 close()
 {
   case "${1}" in
-    'thread_socket') tiny_close ;;
+    'esocket') tiny_close ;;
     'xray')          core_close ;;
     *)
       echo "Unknown status: ${1}"
@@ -591,7 +591,7 @@ close()
 usage()
 {
   echo "Usage: ${0} <t|x|s>"
-  echo '  t  启动/关闭 thread_socket 模式'
+  echo '  t  启动/关闭 esocket 模式'
   echo '  x  启动/关闭 xray 模式'
   echo '  s  查看运行状态'
   exit 2
@@ -619,7 +619,7 @@ case "${status}:${1}" in
       && echo "MLKit is running. (${status})" \
       || echo 'MLKit is stopped.'
     ;;
-  thread_socket:t | xray:x)
+  esocket:t | xray:x)
     close "${status}"
     ;;
   :t)
