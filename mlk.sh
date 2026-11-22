@@ -95,6 +95,38 @@ PREF=100
 TUN_ADDR='172.24.0.1/30'
 WAIT_TIME=3
 
+# 启动时保存到 .uid；关闭时从 .uid 读回的变量
+# 关闭必须使用启动时的值，否则启动后修改了脚本会导致规则删不掉、进程残留。
+# ALLOW_ALL_UID / ALLOW_UDP_UID 由 find_uid 单独写入，读取时另外处理。
+CONFIG_VARS="SERVER_ADDR \
+  ALLOW_IP \
+  ALLOW_IPv6 \
+  ALLOW_IP_EXCEPT \
+  ENABLE_IPv6 \
+  PACKAGES \
+  ALLOW_PACKAGES \
+  ALLOW_UDP_PACKAGES \
+  ALLOW_LOCAL_DNS \
+  ALLOW_REMOTE_DNS \
+  ALLOW_LOCAL_UDP \
+  ALLOW_LOCAL_TCP \
+  ALLOW_REMOTE_UDP \
+  ALLOW_REMOTE_TCP \
+  ALLOW_WLAN \
+  ALLOW_LOOKUP \
+  ALLOW_UID \
+  ALLOW_PORT \
+  TCP_PORT \
+  XRAY_THREAD_SOCKET \
+  TPROXY_PORT \
+  MARK \
+  GID \
+  TUNDEV \
+  TABLE \
+  PREF \
+  TUN_ADDR \
+  WAIT_TIME"
+
 echo_v()
 {
   eval "local value=\"\$${1}\""
@@ -113,33 +145,7 @@ generate_uid()
   find_uid "${ALLOW_UDP_PACKAGES}" "${ALLOW_UDP_UID}"
 
   # Saving configuration
-  local vars="SERVER_ADDR \
-      ALLOW_IP \
-      ALLOW_IPv6 \
-      ENABLE_IPv6 \
-      PACKAGES \
-      ALLOW_PACKAGES \
-      ALLOW_UDP_PACKAGES \
-      ALLOW_LOCAL_DNS \
-      ALLOW_REMOTE_DNS \
-      ALLOW_LOCAL_UDP \
-      ALLOW_LOCAL_TCP \
-      ALLOW_REMOTE_UDP \
-      ALLOW_REMOTE_TCP \
-      ALLOW_WLAN \
-      ALLOW_LOOKUP \
-      ALLOW_UID \
-      ALLOW_PORT \
-      TCP_PORT \
-      TPROXY_PORT \
-      MARK \
-      TUNDEV \
-      TABLE \
-      PREF \
-      TUN_ADDR \
-      WAIT_TIME"
-
-  for var in ${vars}
+  for var in ${CONFIG_VARS}
   do
     echo_v ${var}
   done
@@ -186,33 +192,15 @@ load_configuration()
   # .uid 不存在时（例如被手动删除）保留脚本中的默认值，避免变量被清空
   [ -f ${home_path}/.uid ] || return 0
 
-  SERVER_ADDR="$(find_configuration SERVER_ADDR)"
-  ALLOW_IP="$(find_configuration ALLOW_IP)"
-  ALLOW_IPv6="$(find_configuration ALLOW_IPv6)"
-  ENABLE_IPv6="$(find_configuration ENABLE_IPv6)"
-  PACKAGES="$(find_configuration PACKAGES)"
-  ALLOW_PACKAGES="$(find_configuration ALLOW_PACKAGES)"
-  ALLOW_UDP_PACKAGES="$(find_configuration ALLOW_UDP_PACKAGES)"
-  ALLOW_ALL_UID="$(find_configuration ALLOW_ALL_UID)"
-  ALLOW_UDP_UID="$(find_configuration ALLOW_UDP_UID)"
-  ALLOW_LOCAL_DNS="$(find_configuration ALLOW_LOCAL_DNS)"
-  ALLOW_REMOTE_DNS="$(find_configuration ALLOW_REMOTE_DNS)"
-  ALLOW_LOCAL_UDP="$(find_configuration ALLOW_LOCAL_UDP)"
-  ALLOW_LOCAL_TCP="$(find_configuration ALLOW_LOCAL_TCP)"
-  ALLOW_REMOTE_UDP="$(find_configuration ALLOW_REMOTE_UDP)"
-  ALLOW_REMOTE_TCP="$(find_configuration ALLOW_REMOTE_TCP)"
-  ALLOW_WLAN="$(find_configuration ALLOW_WLAN)"
-  ALLOW_LOOKUP="$(find_configuration ALLOW_LOOKUP)"
-  ALLOW_UID="$(find_configuration ALLOW_UID)"
-  ALLOW_PORT="$(find_configuration ALLOW_PORT)"
-  TCP_PORT="$(find_configuration TCP_PORT)"
-  TPROXY_PORT="$(find_configuration TPROXY_PORT)"
-  MARK="$(find_configuration MARK)"
-  TUNDEV="$(find_configuration TUNDEV)"
-  TABLE="$(find_configuration TABLE)"
-  PREF="$(find_configuration PREF)"
-  TUN_ADDR="$(find_configuration TUN_ADDR)"
-  WAIT_TIME="$(find_configuration WAIT_TIME)"
+  # 只覆盖 .uid 中存在的键：旧版本生成的 .uid 缺少新增的键时保留脚本默认值，
+  # 避免 GID 等被清空导致规则删除失败
+  for var in ${CONFIG_VARS} ALLOW_ALL_UID ALLOW_UDP_UID
+  do
+    if grep -q "^${var}=" ${home_path}/.uid
+    then
+      eval "${var}=\"\$(find_configuration ${var})\""
+    fi
+  done
 }
 
 ip46tables()
