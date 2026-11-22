@@ -395,7 +395,7 @@ xray_rule()
   ip46tables -t mangle -${FOP} PREROUTING \
     -p tcp \
     -m socket \
-    -j DIVERT
+    -j DIVERT || true
 }
 
 # 尽力清理：规则/进程可能本来就不存在（例如断电重启后），
