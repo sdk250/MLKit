@@ -27,6 +27,10 @@ ALLOW_IP="127.0.0.0/8 \
 ALLOW_IPv6="::1/128 \
   fe80::/10"
 
+# 放行的局域网主机，其流量完全不经过代理（包括 DNS）
+# 优先级高过 ALLOW_IP
+ALLOW_IP_EXCEPT=''
+
 ENABLE_IPv6=0
 
 # 仅适用于Android系统
@@ -250,6 +254,23 @@ xray_rule()
   ip46tables -t mangle -${2} XRAY_MASK \
     -p udp --dport 67:68 \
     -j RETURN
+
+  for H in ${ALLOW_IP_EXCEPT}
+  do
+    case "${H}" in
+      *:*)
+        if [ "${ENABLE_IPv6}" = 1 ]
+        then
+          ip6tables -w ${WAIT_TIME} -t mangle -${2} XRAY \
+            -s ${H} -j RETURN
+        fi
+        ;;
+      *)
+        iptables -w ${WAIT_TIME} -t mangle -${2} XRAY \
+          -s ${H} -j RETURN
+        ;;
+    esac
+  done
 
   local FOP="D"
   if [ "${2}" = "A" ]
