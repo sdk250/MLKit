@@ -171,7 +171,7 @@ create_tun()
 {
   if [ -c /dev/tun ]
   then
-    [ -f /dev/net/tun ] || ( mkdir -p /dev/net \
+    [ -e /dev/net/tun ] || ( mkdir -p /dev/net \
       && ln -sf /dev/tun /dev/net/tun )
   else
     [ -c /dev/net/tun ] || ( mkdir -p /dev/net \
