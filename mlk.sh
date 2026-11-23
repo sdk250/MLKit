@@ -398,6 +398,29 @@ xray_rule()
     -j DIVERT || true
 }
 
+# 按进程名结束进程，兼容不同系统
+# 找不到进程时返回非 0，调用处按需加 `|| true`
+kill_proc()
+{
+  if command -v pkill > /dev/null 2>&1
+  then
+    pkill -x "${1}"
+  elif command -v killall > /dev/null 2>&1
+  then
+    killall "${1}"
+  else
+    local found=1
+    for dir in /proc/[0-9]*
+    do
+      if [ "$(cat ${dir}/comm 2> /dev/null)" = "${1}" ]
+      then
+        kill "${dir##*/}" 2> /dev/null && found=0
+      fi
+    done
+    return ${found}
+  fi
+}
+
 # 尽力清理：规则/进程可能本来就不存在（例如断电重启后），
 # 任何一步失败都不能中断脚本，因此每条命令都以 `|| true` 结尾。
 # 以 `|| true` 方式调用 xray_rule 时，其内部的 set -e 不生效，每条删除都会被尝试。
@@ -444,13 +467,13 @@ rollback()
 
   clean_rules ${1} ${2} > /dev/null 2>&1
   ip -6 rule del pref ${PREF} > /dev/null 2>&1 || true
-  # 按 PID 结束刚启动的内核：刚 fork 时进程名可能还不是 xray，单靠 killall 会漏掉
+  # 按 PID 结束刚启动的内核：刚 fork 时进程名可能还不是 xray，单靠进程名会漏掉
   if [ -n "${CORE_PID}" ]
   then
     kill ${CORE_PID} > /dev/null 2>&1 || true
   fi
-  killall esocket > /dev/null 2>&1 || true
-  killall xray > /dev/null 2>&1 || true
+  kill_proc esocket > /dev/null 2>&1 || true
+  kill_proc xray > /dev/null 2>&1 || true
   rm -f ${home_path}/.uid
 }
 
@@ -521,8 +544,8 @@ core_close()
     ip -6 rule del pref ${PREF} || true # Allow IPV6
   fi
 
-  [ "${XRAY_THREAD_SOCKET}" = 1 ] && killall esocket || true
-  killall xray || true
+  [ "${XRAY_THREAD_SOCKET}" = 1 ] && kill_proc esocket || true
+  kill_proc xray || true
 
   rm -f ${home_path}/.uid
   mv ${0%/*}/enabled ${0%/*}/disabled
@@ -576,7 +599,7 @@ tiny_close()
   load_configuration
 
   ip -6 rule del pref ${PREF} || true
-  killall esocket || true
+  kill_proc esocket || true
 
   clean_rules tiny ${TCP_PORT}
 
