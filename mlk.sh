@@ -239,14 +239,17 @@ xray_rule()
   ip46rule ${1} fwmark ${MARK} table ${TABLE} pref ${PREF}
   ip46route ${1} local default dev lo table ${TABLE}
 
+  # Accept Proxy-Core traffic
   ip46tables -t mangle -${2} XRAY_MASK \
     -m owner --gid ${GID} \
     -j RETURN
 
+  # Accept DHCP
   ip46tables -t mangle -${2} XRAY_MASK \
     -p udp --dport 67:68 \
     -j RETURN
 
+  # Accept traffic from specific source
   for H in ${ALLOW_IP_SOURCE}
   do
     case "${H}" in
@@ -264,6 +267,7 @@ xray_rule()
     esac
   done
 
+  # 某些规则需要用 Insert 的方式，而不能是 Append
   local FOP="D"
   if [ "${2}" = "A" ]
   then
@@ -276,6 +280,7 @@ xray_rule()
     -m mark --mark ${MARK} \
     -j ACCEPT
 
+  # Direct proxy destination hosts
   for IP in ${ALLOW_IP_EXCEPT}
   do
     for PROTO in tcp udp
@@ -333,6 +338,8 @@ xray_rule()
       -p udp --dport 53 \
       -j MARK --set-mark ${MARK}
   fi
+
+  # Proxy DNS
   ip46tables -t mangle -${2} XRAY \
     -p udp --dport 53 \
     -j TPROXY \
