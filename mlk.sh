@@ -27,9 +27,13 @@ ALLOW_IP="127.0.0.0/8 \
 ALLOW_IPv6="::1/128 \
   fe80::/10"
 
-# 放行的局域网主机，其流量完全不经过代理（包括 DNS）
+# 代理指定的目的IP
 # 优先级高过 ALLOW_IP
 ALLOW_IP_EXCEPT=''
+
+# 放行的局域网主机，其流量完全不经过代理（包括 DNS）
+# 优先级高过 ALLOW_IP
+ALLOW_IP_SOURCE=''
 
 ENABLE_IPv6=0
 
@@ -243,7 +247,7 @@ xray_rule()
     -p udp --dport 67:68 \
     -j RETURN
 
-  for H in ${ALLOW_IP_EXCEPT}
+  for H in ${ALLOW_IP_SOURCE}
   do
     case "${H}" in
       *:*)
@@ -271,6 +275,23 @@ xray_rule()
   ip46tables -t filter -${FOP} FORWARD \
     -m mark --mark ${MARK} \
     -j ACCEPT
+
+  for IP in ${ALLOW_IP_EXCEPT}
+  do
+    for PROTO in tcp udp
+    do
+      ip46tables -t mangle -${2} XRAY \
+        -d ${IP} \
+        -p ${PROTO} \
+        -j TPROXY \
+        --on-port ${4} --tproxy-mark ${MARK}
+      ip46tables -t mangle -${2} XRAY_MASK \
+        -d ${IP} \
+        -p ${PROTO} \
+        -j MARK \
+        --set-mark ${MARK}
+    done
+  done
 
   [ "${ALLOW_REMOTE_UDP}" = 1 ] && \
     ip46tables -t mangle \
